@@ -1,0 +1,13 @@
+useDynLib(CARBayesST)
+export(
+     ST.knorrheld.int,
+     ST.knorrheld.main,
+     ST.clustconv,
+     ST.clustonly,
+     ST.clustcar,
+     results.summarise,
+     print.carbayesST
+)
+import(Rcpp)
+importFrom(truncdist, rtrunc)
+importFrom(coda, mcmc)
