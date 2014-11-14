@@ -15,13 +15,13 @@ Implements a series of Poisson log-linear models with spatio-temporal random eff
 \tabular{ll}{
 Package: \tab CARBayesST\cr
 Type: \tab Package\cr
-Version: \tab 1.0\cr
-Date: \tab 2014-08-05\cr
+Version: \tab 1.1\cr
+Date: \tab 2014-11-13\cr
 License: \tab GPL (>= 2)\cr
 }
 
 
-Implements Bayesian Poisson log-linear models for spatio-temporal areal unit count data. The models assume the response is Poisson, and model the mean as a multiplicative combination of an offset term E and a risk term theta. The log-risk is modelled by random effects and five different models are considered. The first two are the models proposed by Knorr-Held and Besag (1998) and Knorr-Held (2000), while the latter three are clustering models proposed in Lee (2014).
+Implements Bayesian Poisson log-linear models for spatio-temporal areal unit count data. The models assume the response is Poisson, and model the mean as a combination of covariates, random effects and a piecewise constant cluster or intercept term (the latter is in ST.cluster and ST.ARCARcluster only). Six different models can be implemented: those proposed by Knorr-Held and Besag (1998), Knorr-Held (2000), Lee and Lawson (2014), Rushworth et al. (2014a) and Rushworth et al. (2014b).
 }
 
 
@@ -35,7 +35,11 @@ Knorr-Held, L. and J. Besag (1998). Modelling Risk from a Disease in Time and Sp
 
 Knorr-Held, L. (2000). Bayesian modelling of inseparable space-time variation in disease risk. Statistics in Medicine, 19, 2555-2567.
 
-Lee, D. and A. Lawson (2014). Cluster detection and risk estimation for spatio-temporal health data. arXiv:1408.1191.
+Lee, D. and A. Lawson (2014). Cluster detection and risk estimation for spatio-temporal health data. arXiv:1408.1191v2.
+
+Rushworth, A., Lee, D., and Sarran, C.  An adaptive spatio-temporal smoothing model for estimating trends and step changes in disease risk (2014a) arXiv:1411.0924
+
+Rushworth, A., D. Lee, and R. Mitchell (2014b). A spatio-temporal model for estimating the long-term effects of air pollution on respiratory hospital admissions in Greater London. Spatial and Spatio-temporal Epidemiology 10, 29-38.
 }
 
 
@@ -77,11 +81,13 @@ formula <- Y~ offset(log(E)) + x
      
 
 #### Run the models     
-\dontrun{model1 <- ST.knorrheld.main(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
-\dontrun{model2 <- ST.knorrheld.int(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
-\dontrun{model3 <- ST.clustonly(formula, data=NULL, G=3, K=100, burnin=5000, n.sample=10000)}
-\dontrun{model4 <- ST.clustcar(formula, data=NULL, G=3, W=W, burnin=5000, n.sample=10000)}
-\dontrun{model5 <- ST.clustconv(formula, data=NULL, G=3, coordinates=Grid, burnin=5000, 
+\dontrun{model1 <- ST.KHmain(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
+\dontrun{model2 <- ST.KHinteraction(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
+\dontrun{model3 <- ST.cluster(formula, data=NULL, G=3, K=100, burnin=5000, n.sample=10000)}
+\dontrun{model4 <- ST.ARCAR(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
+\dontrun{model5 <- ST.ARCARcluster(formula, data=NULL, G=3, W=W, burnin=5000, 
 n.sample=10000)}
-\dontrun{print.CARBayesST(model5)}
+\dontrun{model6 <- ST.ARCARadaptive(formula, data=NULL, W=W, burnin=5000, 
+n.sample=10000)}
+\dontrun{print.CARBayesST(model6)}
 }

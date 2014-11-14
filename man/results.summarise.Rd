@@ -33,10 +33,9 @@ For further details about how to apply the function see the example below.
 
 
 \value{
-\item{exceedence }{A 2 dimensional array containing the requied exceedence probabilities. Each row relates to a parameter, and each column to a different requested exceedence probability. If the argument exceedences is missing this object is NULL.
-}
-
 \item{quantile }{A 2 dimensional array containing the requied posterior quantiles. Each row relates to a parameter, and each column to a different requested quantile. If the argument quantiles is missing this object is NULL.
+}
+\item{exceedence }{A 2 dimensional array containing the requied exceedence probabilities. Each row relates to a parameter, and each column to a different requested exceedence probability. If the argument exceedences is missing this object is NULL.
 }
 }
 
@@ -86,7 +85,7 @@ formula <- Y~ offset(log(E)) + x
      
 
 #### Run the models     
-\dontrun{model1 <- ST.knorrheld.main(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
+\dontrun{model1 <- ST.KHmain(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
 \dontrun{samples <- model1$samples$fitted / E}
 \dontrun{results <- results.summarise(samples, exceedences=c(1,1.5,2), 
 quantiles=c(0.5, 0.025, 0.975))}

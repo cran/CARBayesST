@@ -1,21 +1,21 @@
-\name{ST.knorrheld.int}
-\alias{ST.knorrheld.int}
+\name{ST.ARCAR}
+\alias{ST.ARCAR}
 
 
 \title{
-Fit the space-time Poisson log-linear model proposed by Knorr-Held (2000) with separable spatio-temporal main effects and an independent space-time interaction.
+Fit the space-time Poisson log-linear model proposed by Rushworth et al. (2014b) with an autoregressive spatio-temporal correlation stucture.
 }
 
 \description{
-The function fits the Bayesian spatio-temporal model proposed by Knorr-Held (2000) to Poisson count data. The natural log of the linear predictor is made up of 6 terms, an intercept term, two spatial random effects, correlated and independent, and two temporal random effects, correlated and independent, and independent space-time interactions. The independent random effects are assigned zero-mean Gaussian priors with a common variance, while the correlated effects are modelled by intrinsic conditional  autoregressive models respectively. Inference is based on Markov chain Monte Carlo (McMC) simulation, using a combination of Gibbs sampling and Metropolis steps.
+The function fits the Bayesian spatio-temporal model proposed by Rushworth et al. (2014b) to Poisson count data. The natural log of the linear predictor is made up of a covariate component and a set of random effects that follow an autoregressive CAR model. Specifically, the random effects follow a multivariate first order autoregressive process, where spatial autocorrelation is induced via the precision matrix corresponding to the conditional autoregressive (CAR) prior proposed by Leroux et al. (1999). Inference is based on Markov chain Monte Carlo (McMC) simulation, using a combination of Gibbs sampling and Metropolis steps.
 }
 
 
 \usage{
-ST.knorrheld.int(formula, data=NULL, W, burnin=0, n.sample=1000, thin=1,  
-blocksize.beta=5, prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, 
-verbose=TRUE)
+ST.ARCAR(formula, data=NULL, W, burnin=0, n.sample=1000, thin=1,  
+prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, verbose=TRUE)
 }
+
 
 \arguments{
   \item{formula}{
@@ -36,9 +36,6 @@ The number of MCMC samples to generate. Defaults to 1,000.
   \item{thin}{
 The level of thinning to apply to the MCMC samples to reduce their temporal autocorrelation. Defaults to 1.
 }
-  \item{blocksize.beta}{
-The size of the blocks in which to update the regression parameters in the MCMC algorithm. Defaults to 5.
-}
   \item{prior.mean.beta}{
 A vector of prior means for the regression parameters beta (Gaussian priors are assumed). Defaults to a vector of zeros.
 }
@@ -46,7 +43,7 @@ A vector of prior means for the regression parameters beta (Gaussian priors are 
 A vector of prior variances for the regression parameters beta (Gaussian priors are assumed). Defaults to a vector with values 1000.
 }
   \item{prior.tau2}{
-The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) prior for each random effect variance term tau2. Defaults to c(0.001, 0.001).  
+The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) prior for the random effect variance term tau2. Defaults to c(0.001, 0.001).  
 }
      \item{verbose}{
 Logical, should the function update the user on its progress.  
@@ -54,7 +51,7 @@ Logical, should the function update the user on its progress.
 }
 
 \details{
-For further details about how to apply the function see the examples below and in the vignette.
+For further details about how to apply the function see the examples below.
 }
 
 
@@ -63,15 +60,13 @@ For further details about how to apply the function see the examples below and i
 
 \item{samples }{A list containing the MCMC samples from the model.}
 
-\item{fitted.values }{A vector containing the fitted value for each area and time point. The vector is ordered so that all spatial units at time one come first and then at time two and so on.}
+\item{fitted.values }{A vector containing the fitted value for each area and time point. The vector is ordered so that all spatial units for time period one come first and then time period two and so on.}
 
-\item{residuals }{A vector containing the residuals for each area and time point. The vector is ordered so that all spatial units at time one come first and then at time two and so on.}
+\item{residuals }{A vector containing the residuals for each area and time point. The vector is ordered so that all spatial units for time period one come first and then time period two and so on.}
 
-\item{posterior.Z }{This argument is NULL and is included for comparibility in the output object with the other models in this package.}
+\item{stepchange }{This argument is NULL and is included for comparibility in the output object with the other models in this package.}
 
-\item{median.Z }{This argument is NULL and is included for comparibility in the output object with the other models in this package.}
-
-\item{modelfit }{Model fit criteria including the Deviance Information Criterion (DIC), the effective number of parameters in the model (p.d), DIC3, Watanabe-Akaike Information Criterion (WAIC), and the log Marginal Predictive Likelihood (LMPL).}
+\item{modelfit }{Model fit criteria including the Deviance Information Criterion (DIC), the effective number of parameters in the model (p.d), and the log Marginal Predictive Likelihood (LMPL).}
 
 \item{summary.results }{A table summarising some of the parameters in the model.}
 
@@ -81,15 +76,14 @@ For further details about how to apply the function see the examples below and i
 }
 
 
-
-
-
 \references{
-Knorr-Held, L. (2000). Bayesian modelling of inseparable space-time variation in disease risk. Statistics in Medicine, 19, 2555-2567.
+Leroux, B., X. Lei, and N. Breslow (1999). Estimation of disease rates in small areas: A new mixed model for spatial dependence, Chapter Statistical Models in Epidemiology, the Environment and Clinical Trials, Halloran, M and Berry, D (eds), pp. 135-178. Springer-Verlag, New York.
+
+Rushworth, A., D. Lee, and R. Mitchell (2014b). A spatio-temporal model for estimating the long-term effects of air pollution on respiratory hospital admissions in Greater London. Spatial and Spatio-temporal Epidemiology 10, 29-38.
 }
 
 \author{
-Duncan Lee
+Alastair Rushworth and Duncan Lee
 }
 
 
@@ -111,7 +105,7 @@ distance <-array(0, c(n,n))
 W <-array(0, c(n,n))
      for(i in 1:n)
      {
-     	for(j in 1:n)
+          for(j in 1:n)
 		{
 		temp <- (Grid[i,1] - Grid[j,1])^2 + (Grid[i,2] - Grid[j,2])^2
 		distance[i,j] <- sqrt(temp)
@@ -132,5 +126,5 @@ formula <- Y~ offset(log(E)) + x
      
 
 #### Run the model     
-\dontrun{model2 <- ST.knorrheld.int(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
+\dontrun{model1 <- ST.ARCAR(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
 }

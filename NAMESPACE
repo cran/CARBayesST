@@ -1,13 +1,15 @@
 useDynLib(CARBayesST)
 export(
-     ST.knorrheld.int,
-     ST.knorrheld.main,
-     ST.clustconv,
-     ST.clustonly,
-     ST.clustcar,
+     ST.KHmain,
+     ST.KHinteraction,
+     ST.cluster,
+     ST.ARCAR,
+     ST.ARCARcluster,
+     ST.ARCARadaptive,
      results.summarise,
      print.carbayesST
 )
-import(Rcpp)
+import(spam)
 importFrom(truncdist, rtrunc)
+import(Rcpp)
 importFrom(coda, mcmc)

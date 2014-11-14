@@ -5,8 +5,8 @@ linpredcompute <- function(X, nsites, p, beta, offset) {
     .Call('CARBayesST_linpredcompute', PACKAGE = 'CARBayesST', X, nsites, p, beta, offset)
 }
 
-quadform <- function(W_duplet1, W_duplet2, n_duplet, nsites, phi, nneighbours, diagonal, offdiagonal) {
-    .Call('CARBayesST_quadform', PACKAGE = 'CARBayesST', W_duplet1, W_duplet2, n_duplet, nsites, phi, nneighbours, diagonal, offdiagonal)
+quadform <- function(W_duplet1, W_duplet2, n_duplet, nsites, phi, theta, nneighbours, diagonal, offdiagonal) {
+    .Call('CARBayesST_quadform', PACKAGE = 'CARBayesST', W_duplet1, W_duplet2, n_duplet, nsites, phi, theta, nneighbours, diagonal, offdiagonal)
 }
 
 poissoncarupdate <- function(W_list, nsites, phi, tau2, y, phi_tune, rho_num, rho_den, offset) {
@@ -21,15 +21,34 @@ poissonbetaupdate <- function(X, nsites, p, beta, proposal, offset, y, prior_mea
     .Call('CARBayesST_poissonbetaupdate', PACKAGE = 'CARBayesST', X, nsites, p, beta, proposal, offset, y, prior_meanbeta, prior_varbeta)
 }
 
-Zupdate <- function(Z, Offset, Y, alpha, lambda, nsites, ntime, G, SS, Gstar) {
-    .Call('CARBayesST_Zupdate', PACKAGE = 'CARBayesST', Z, Offset, Y, alpha, lambda, nsites, ntime, G, SS, Gstar)
+poissonarcarupdate <- function(W_list, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset) {
+    .Call('CARBayesST_poissonarcarupdate', PACKAGE = 'CARBayesST', W_list, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset)
 }
 
-alphaupdate <- function(Z, nsites, logratio, ntime) {
-    .Call('CARBayesST_alphaupdate', PACKAGE = 'CARBayesST', Z, nsites, logratio, ntime)
+Zupdate <- function(Z, Offset, Y, alpha, lambda, nsites, ntime, G, SS, Gstar, delta) {
+    .Call('CARBayesST_Zupdate', PACKAGE = 'CARBayesST', Z, Offset, Y, alpha, lambda, nsites, ntime, G, SS, Gstar, delta)
 }
 
-Xupdate <- function(Wspace, Y, offset, K, N, X, tau2, proposalsdX) {
-    .Call('CARBayesST_Xupdate', PACKAGE = 'CARBayesST', Wspace, Y, offset, K, N, X, tau2, proposalsdX)
+norm <- function(Z, G, Gstar, alpha, delta, SS, K, Nall) {
+    .Call('CARBayesST_norm', PACKAGE = 'CARBayesST', Z, G, Gstar, alpha, delta, SS, K, Nall)
 }
 
+qform <- function(Qtrip, phi) {
+    .Call('CARBayesST_qform', PACKAGE = 'CARBayesST', Qtrip, phi)
+}
+
+qform_asym <- function(Qtrip, phi1, phi2) {
+    .Call('CARBayesST_qform_asym', PACKAGE = 'CARBayesST', Qtrip, phi1, phi2)
+}
+
+qformSPACETIME <- function(Qtrip, phi, ntime, nsite) {
+    .Call('CARBayesST_qformSPACETIME', PACKAGE = 'CARBayesST', Qtrip, phi, ntime, nsite)
+}
+
+SPTICARphiVarb <- function(W, nsites, ntimes, phiVarb, nneighbours, tau, y, E, phiVarb_tune, alpha, XB, beta_tune) {
+    .Call('CARBayesST_SPTICARphiVarb', PACKAGE = 'CARBayesST', W, nsites, ntimes, phiVarb, nneighbours, tau, y, E, phiVarb_tune, alpha, XB, beta_tune)
+}
+
+updatetripList <- function(trips, vold, vnew, nedges) {
+    .Call('CARBayesST_updatetripList', PACKAGE = 'CARBayesST', trips, vold, vnew, nedges)
+}

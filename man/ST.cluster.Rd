@@ -1,21 +1,22 @@
-\name{ST.clustonly}
-\alias{ST.clustonly}
+\name{ST.cluster}
+\alias{ST.cluster}
 
 
 \title{
-Fit the cluster only Poisson log-linear model proposed by Lee and Lawson (2014).
+Fit the space-time Poisson log-linear clustering model proposed by Lee and Lawson (2014).
 }
 
 \description{
-The function fits the Bayesian spatio-temporal clustering model proposed by Lee and Lawson (2014) to Poisson count data. The natural log of the linear predictor is made up of a clustering component, which represents the risk surface as piecewise constant with G risk levels or classes. The mean in each risk level changes over time, and each area is allowed to change risk class over time. The mean risk levels and the allocation of an area to a risk class are both temporally correlated. Inference is based on Markov chain Monte Carlo (McMC) simulation, using a combination of Gibbs sampling and Metropolis steps.
+The function fits the Bayesian spatio-temporal clustering model proposed by Lee and Lawson (2014) to Poisson count data. The natural log of the linear predictor is made up of a covariate component and a clustering component, the latter of which represents the spatial mean surface with a  piecewise constant term with G levels or classes. The mean in each class changes over time, and each area is allowed to change class over time. The mean in each class and the allocation of an area to a class are both temporally correlated. Inference is based on Markov chain Monte Carlo (McMC) simulation, using a combination of Gibbs sampling and Metropolis steps.
 }
 
 
 \usage{
-ST.clustonly(formula, K, data=NULL, G, burnin=0, n.sample=1000, thin=1,  
-blocksize.beta=5, prior.mean.beta=NULL, prior.var.beta=NULL, prior.sigma2=NULL, 
-prior.alpha=NULL, verbose=TRUE)
+ST.cluster(formula, K, data=NULL, G, burnin=0, n.sample=1000, thin=1,  
+prior.mean.beta=NULL, prior.var.beta=NULL, prior.sigma2=NULL, prior.alpha=NULL, 
+prior.delta=NULL, verbose=TRUE)
 }
+
 
 \arguments{
   \item{formula}{
@@ -39,9 +40,6 @@ The number of MCMC samples to generate. Defaults to 1,000.
   \item{thin}{
 The level of thinning to apply to the MCMC samples to reduce their temporal autocorrelation. Defaults to 1.
 }
-  \item{blocksize.beta}{
-The size of the blocks in which to update the regression parameters in the MCMC algorithm. Defaults to 5.
-}
   \item{prior.mean.beta}{
 A vector of prior means for the regression parameters beta (Gaussian priors are assumed). Defaults to a vector of zeros.
 }
@@ -52,17 +50,23 @@ A vector of prior variances for the regression parameters beta (Gaussian priors 
 The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) prior for the random walk prior for the risk levels. Defaults to c(0.001, 0.001).  
 }
   \item{prior.alpha}{
-The prior maximum for a Unifrom(0, prior.alpha) prior for the temporal correlation model on the allocation variables of an area to a risk class. Defaults to 10.  
+The prior maximum for a Uniform(0, prior.alpha) prior for the parameter alpha. 
+This parameter controls the temporal correlation between the allocation variables
+for each area to a risk class over time. Defaults to 10.  
 }     
-  \item{verbose}{
+  \item{prior.delta}{
+The prior maximum for a Uniform(0, prior.delta) prior for the parameter delta. 
+This parameter controls the penalty constraint for the allocation variables
+for each area to a risk class. Defaults to 10.   
+} 
+     \item{verbose}{
 Logical, should the function update the user on its progress.  
 }
 }
 
 \details{
-For further details about how to apply the function see the examples below and in the vignette.
+For further details about how to apply the function see the examples below.
 }
-
 
 
 \value{
@@ -70,15 +74,13 @@ For further details about how to apply the function see the examples below and i
 
 \item{samples }{A list containing the MCMC samples from the model.}
 
-\item{fitted.values }{A vector containing the fitted value for each area and time point. The vector is ordered so that all spatial units at time one come first and then at time two and so on.}
+\item{fitted.values }{A vector containing the fitted value for each area and time point. The vector is ordered so that all spatial units for time period one come first and then time period two and so on.}
 
-\item{residuals }{A vector containing the residuals for each area and time point. The vector is ordered so that all spatial units at time one come first and then at time two and so on.}
+\item{residuals }{A vector containing the residuals for each area and time point. The vector is ordered so that all spatial units for time period one come first and then time period two and so on.}
 
-\item{posterior.Z }{A matrix containing the discrete posterior distribution for each allocation variable. Each row corresponds to one variable, and the columns are the posterior probabilities of being in each of the G risk classes. The matrix is ordered so that all spatial units at time one come first and then at time two and so on.}
+\item{stepchange }{A K*N matrix giving the posterior median of the allocation variable Z assigning a data point to a risk class. Each row corresponds to an areal unit and each column to a time period.}
 
-\item{median.Z }{A K*N matrix giving the posterior median of the allocation variable assigning a data point to a risk class. Each row corresponds to an areal unit and each column to a time period.}
-
-\item{modelfit }{Model fit criteria including the Deviance Information Criterion (DIC), the effective number of parameters in the model (p.d), DIC3, Watanabe-Akaike Information Criterion (WAIC), and the log Marginal Predictive Likelihood (LMPL).}
+\item{modelfit }{Model fit criteria including the Deviance Information Criterion (DIC), the effective number of parameters in the model (p.d), and the log Marginal Predictive Likelihood (LMPL).}
 
 \item{summary.results }{A table summarising some of the parameters in the model.}
 
@@ -115,8 +117,8 @@ distance <-array(0, c(n,n))
 W <-array(0, c(n,n))
      for(i in 1:n)
      {
-     	for(j in 1:n)
-		{
+          for(j in 1:n)
+     	{
 		temp <- (Grid[i,1] - Grid[j,1])^2 + (Grid[i,2] - Grid[j,2])^2
 		distance[i,j] <- sqrt(temp)
 			if(temp==1)  W[i,j] <- 1 
@@ -136,5 +138,5 @@ formula <- Y~ offset(log(E)) + x
      
 
 #### Run the model     
-\dontrun{model3 <- ST.clustonly(formula, data=NULL, G=3, K=100, burnin=5000, n.sample=10000)}
+\dontrun{model1 <- ST.cluster(formula, K=n, data=NULL, G=4, burnin=5000, n.sample=10000)}
 }

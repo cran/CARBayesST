@@ -1,4 +1,4 @@
-ST.clustcar <- function(formula, data=NULL, W, G, burnin=0, n.sample=1000, thin=1,  blocksize.beta=5, prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, prior.sigma2=NULL, prior.alpha=NULL, verbose=TRUE)
+ST.ARCARcluster <- function(formula, data=NULL, W, G, burnin=0, n.sample=1000, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, prior.sigma2=NULL, prior.alpha=NULL, prior.delta=NULL, verbose=TRUE)
 {
 #### Check on the verbose option
      if(is.null(verbose)) verbose=TRUE     
@@ -35,10 +35,10 @@ diag(cor.X) <- 0
     if(min(cor.X, na.rm=TRUE)==-1) stop("the covariate matrix has two exactly linearly related columns.", call.=FALSE)
  
        if(p>1)
-	 {
-    	 if(sort(apply(X, 2, sd))[2]==0) stop("the covariate matrix has two intercept terms.", call.=FALSE)
-	 }else
-	 {
+      {
+          if(sort(apply(X, 2, sd))[2]==0) stop("the covariate matrix has two intercept terms.", call.=FALSE)
+      }else
+      {
 	 }
 	 
 ## Standardise the matrix
@@ -88,8 +88,9 @@ offset <- try(model.offset(frame), silent=TRUE)
   if(!is.numeric(G)) stop("G is not numeric.", call.=FALSE)    
   if(G<=0) stop("G is not positive.", call.=FALSE)    
   if(G!=round(G)) stop("G is not an integer.", call.=FALSE) 
+Gstar <- (G+1)/2  
   
-  
+     
   #### Format and check the neighbourhood matrix W
   if(!is.matrix(W)) stop("W is not a matrix.", call.=FALSE)
 K <- nrow(W)
@@ -113,9 +114,6 @@ N <- N.all / K
   if(burnin!=round(burnin)) stop("burnin is not an integer.", call.=FALSE) 
   if(n.sample!=round(n.sample)) stop("n.sample is not an integer.", call.=FALSE) 
   if(thin!=round(thin)) stop("thin is not an integer.", call.=FALSE) 
-  if(!is.numeric(blocksize.beta)) stop("blocksize.beta is not a number", call.=FALSE)
-  if(blocksize.beta <= 0) stop("blocksize.beta is less than or equal to zero", call.=FALSE)
-  if(!(floor(blocksize.beta)==ceiling(blocksize.beta))) stop("blocksize.beta has non-integer values.", call.=FALSE)
 
   
   #### Check and specify the priors
@@ -146,6 +144,12 @@ N <- N.all / K
   if(sum(is.na(prior.alpha))!=0) stop("the prior value for alpha has missing values.", call.=FALSE)    
   if(prior.alpha<=0) stop("the prior value for alpha is not positive.", call.=FALSE)    
      
+  if(is.null(prior.delta)) prior.delta <- 10       
+  if(length(prior.delta)!=1) stop("the prior value for delta is the wrong length.", call.=FALSE)    
+  if(!is.numeric(prior.delta)) stop("the prior value for delta is not numeric.", call.=FALSE)    
+  if(sum(is.na(prior.delta))!=0) stop("the prior value for delta has missing values.", call.=FALSE)    
+  if(prior.delta<=0) stop("the prior value for delta is not positive.", call.=FALSE)    
+ 
      
   #### Specify the initial parameter values
   beta <- glm(Y~X.standardised-1, offset=offset, family=poisson)$coefficients
@@ -169,6 +173,7 @@ N <- N.all / K
      }
    
   alpha <- runif(1,0, prior.alpha)
+  delta <- runif(1,0, prior.delta)
   mu <- array(NA, c(K,N))
   phi <- array(NA, c(K,N))
      for(t in 1:N)
@@ -179,13 +184,15 @@ N <- N.all / K
      } 
   sigma2 <- var(as.numeric(diff(lambda)))  
   tau2 <- var(as.numeric(phi)) / mean(apply(W,2,sum))        
-  rho <- runif(1)       
+  rho <- runif(1) 
+  gamma <- runif(1)
   offset.mat <- matrix(offset, nrow=K, ncol=N, byrow=FALSE) 
   regression.mat <- matrix(X.standardised %*% beta, nrow=K, ncol=N, byrow=FALSE)   
   Y.mat <- matrix(Y, nrow=K, ncol=N, byrow=FALSE) 
 
      
 ## Compute the blocking structure for beta     
+blocksize.beta <- 5 
      if(blocksize.beta >= p)
      {
      n.beta.block <- 1
@@ -212,31 +219,33 @@ N <- N.all / K
      
 #### Set up matrices to store samples
   n.keep <- floor((n.sample - burnin)/thin)
-  samples.phi <- array(NA, c(n.keep, (K*N)))
+  samples.phi <- array(NA, c(n.keep, N.all))
   samples.beta <- array(NA, c(n.keep, p))
-  samples.Z <- array(NA, c(n.keep, (K*N)))
+  samples.Z <- array(NA, c(n.keep, N.all))
   samples.lambda <- array(NA, c(n.keep, (N*G)))
   samples.tau2 <- array(NA, c(n.keep, 1))
   samples.sigma2 <- array(NA, c(n.keep, 1))   
   samples.alpha <- array(NA, c(n.keep, 1))
+  samples.delta <- array(NA, c(n.keep, 1))
+  samples.gamma <- array(NA, c(n.keep, 1))
   samples.rho <- array(NA, c(n.keep, 1))
-  samples.deviance <- array(NA, c(n.keep, (N*K)))
-  samples.fitted <- array(NA, c(n.keep, (N*K)))
-
+  samples.fitted <- array(NA, c(n.keep, N.all))
+  samples.deviance <- array(NA, c(n.keep, 1))
   
+     
   #### Specify the Metropolis quantities
-  accept.all <- rep(0,10)
+  accept.all <- rep(0,12)
   accept <- accept.all
   proposal.sd.phi <- 0.1
   proposal.sd.alpha <- 0.1
+  proposal.sd.delta <- 0.1
   proposal.sd.lambda <- 0.1
   proposal.sd.rho <- 0.05
   proposal.sd.beta <- 0.01
   proposal.corr.beta <- solve(t(X.standardised) %*% X.standardised)
   chol.proposal.corr.beta <- chol(proposal.corr.beta) 
-
-  tau2.posterior.shape <- prior.tau2[1] + 0.5 * K*N
-  sigma2.posterior.shape <- prior.sigma2[1] + 0.5 * G * (N-1)      
+  tau2.shape <- prior.tau2[1] + N.all/2
+  sigma2.shape <- prior.sigma2[1] + 0.5 * G * (N-1)      
   
   
   #### Create the sparse forms for the W matrix
@@ -269,17 +278,6 @@ N <- N.all / K
   det.Q <-  0.5 * sum(log((rho * Wstar.val + (1-rho))))    
   
   
-  #### Create the grid for G
-  Gstar <- (G+1)/2
-  alpha.grid <- array(NA, c(G,G))
-  constraint.grid <- array(NA, c(G,G))
-     for(i in 1:G)
-     {
-    alpha.grid[i, ] <- (i-1:G)^2     
-    constraint.grid[i, ] <- (1:G-Gstar)^2
-     }
-  
-  
   
   ### Create the first order random walk matrix V
   V <- array(0, c(N,N))
@@ -293,7 +291,14 @@ N <- N.all / K
     Vneigh[(i-1),i] <- 1     
      }
   
-  
+
+  #### Specify quantities that do not change
+  offset.mat <- matrix(offset, nrow=K, ncol=N, byrow=FALSE) 
+  regression.mat <- matrix(X.standardised %*% beta, nrow=K, ncol=N, byrow=FALSE)
+  Y.mat <- matrix(Y, nrow=K, ncol=N, byrow=FALSE) 
+     
+     
+     
   ###########################
   #### Run the Bayesian model
   ###########################
@@ -312,36 +317,51 @@ N <- N.all / K
   
   for(j in 1:n.sample)
   {
-    ###################################
-    ## Sample from phi and tau2 and rho
-    ###################################
+    ##################
+    ## Sample from phi
+    ##################
     phi.offset <- exp(mu + offset.mat + regression.mat)
+    den.offset <- rho * n.neighbours.space + 1 - rho
+    temp1 <- poissonarcarupdate(W_list=spacelist, nsites=K, ntime=N, phi=phi, tau2=tau2, gamma=gamma, rho=rho, ymat=Y.mat, phi_tune=proposal.sd.phi, offset=phi.offset, denoffset=den.offset)      
+    phi <- temp1[[1]]
+    accept[1] <- accept[1] + temp1[[2]]
+    accept[2] <- accept[2] + N.all    
+
+     for(r in 1:G)
+     {
+     temp1 <- which(as.numeric(Z)==r)    
+          if(length(temp1)>0)
+          {
+          mean.temp <- mean(as.numeric(phi)[temp1])
+          phi[Z==r] <- phi[Z==r] - mean.temp
+          }else{}
+     }
+          
+
+       
+    ###########################
+    ## Sample from tau2 and rho
+    ###########################
     proposal.rho <- rtrunc(n=1, spec="norm", a=0, b=1, mean=rho, sd=proposal.sd.rho)    
-    QF <- 0
-    QF.prop <- 0
-       for(t in 1:N)
+    QF <- quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi[ ,1], theta=phi[ ,1], nneighbours=n.neighbours.space, diagonal=rho, offdiagonal=rho)
+    QF.prop <- quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi[ ,1], theta=phi[ ,1], nneighbours=n.neighbours.space, diagonal=proposal.rho, offdiagonal=proposal.rho)
+                
+       for(t in 2:N)
        {
-       ## Sample from phi
-       temp1 <- poissoncarupdate(W_list=spacelist, nsites=K, phi=phi[ ,t], tau2=tau2, y=Y.mat[ ,t], phi_tune=proposal.sd.phi, rho_num=rho, rho_den=rho, offset=phi.offset[ ,t])
-       phi[ ,t] <- temp1[[1]]
-       group.temp <- rep(0,G)
-       group.mean <- tapply(phi[ ,t], Z[ ,t], mean)
-       group.temp[as.numeric(names(group.mean))] <- group.mean     
-       phi[ ,t] <- phi[ ,t]  - group.temp[Z[ ,t]]
-       accept[1] <- accept[1] + temp1[[2]]
-       accept[2] <- accept[2] + K    
-            
        ## Compute the quadratic forms
-       temp2 <- quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi[ ,t], nneighbours=n.neighbours.space, diagonal=rho, offdiagonal=rho)      
+       phi.scaled <- phi[ ,t] - gamma * phi[ ,(t-1)]
+       temp2 <- quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi.scaled, theta=phi.scaled, nneighbours=n.neighbours.space, diagonal=rho, offdiagonal=rho)      
+       temp3 <- quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi.scaled, theta=phi.scaled, nneighbours=n.neighbours.space, diagonal=proposal.rho, offdiagonal=proposal.rho)      
        QF <- QF + temp2
-       temp3 <- quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi[ ,t], nneighbours=n.neighbours.space, diagonal=proposal.rho, offdiagonal=proposal.rho)      
        QF.prop <- QF.prop + temp3
        }
+    
+         
+     #### Sample from tau2
+     tau2.scale <- QF + prior.tau2[2] 
+     tau2 <- 1 / rgamma(1, tau2.shape, scale=(1/tau2.scale)) 
 
-     ## Update tau2
-     tau2.posterior.scale <- QF + prior.tau2[2] 
-     tau2 <- 1 / rgamma(1, tau2.posterior.shape, scale=(1/tau2.posterior.scale)) 
-
+         
      ## Update rho  
      det.Q.proposal <- 0.5 * sum(log((proposal.rho * Wstar.val + (1-proposal.rho))))
      logprob.current <- N * det.Q - QF / tau2
@@ -356,8 +376,25 @@ N <- N.all / K
           {
           }              
     accept[8] <- accept[8] + 1           
-    
-    
+
+
+
+    ####################
+    ## Sample from gamma
+    ####################
+    num <- 0
+    den <- 0
+       for(t in 2:N)
+       {
+       ## Compute the quadratic forms
+       num <- num + quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi[ ,t], theta=phi[ ,(t-1)], nneighbours=n.neighbours.space, diagonal=rho, offdiagonal=rho)
+       den <- den + quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi[ ,(t-1)], theta=phi[ ,(t-1)], nneighbours=n.neighbours.space, diagonal=rho, offdiagonal=rho)
+       }
+    mean.gamma <- num/den
+    sd.gamma <- sqrt(tau2/den)
+    gamma <- rnorm(n=1, mean=mean.gamma, sd=sd.gamma)         
+
+           
     
     #######################     
     #### Sample from lambda
@@ -403,7 +440,7 @@ N <- N.all / K
     #### Sample from Z
     ##################
     mu.offset <- exp(offset.mat + regression.mat + phi)
-    test <- Zupdate(Z=Z, Offset=mu.offset, Y=Y.mat, alpha=alpha, lambda=lambda, nsites=K, ntime=N, G=G, SS=1:G, Gstar)          
+    test <- Zupdate(Z=Z, Offset=mu.offset, Y=Y.mat, alpha=alpha, lambda=lambda, nsites=K, ntime=N, G=G, SS=1:G, Gstar, delta=delta)          
     Z <- test
     for(t in 1:N)
     {
@@ -416,11 +453,11 @@ N <- N.all / K
     #### Sample from alpha
     ######################
     proposal.alpha <-  rtrunc(n=1, spec="norm", a=0, b=prior.alpha, mean=alpha, sd=proposal.sd.alpha)    
-    probmat <- exp(-alpha * alpha.grid - constraint.grid) / apply(exp(-alpha * alpha.grid - constraint.grid),1,sum)
-    proposal.probmat <- exp(-proposal.alpha * alpha.grid - constraint.grid) / apply(exp(-proposal.alpha * alpha.grid - constraint.grid),1,sum)
-    logratio.probmat <- log(proposal.probmat / probmat)
-    temp4 <- alphaupdate(Z=Z, nsites=K, logratio=logratio.probmat, ntime=N) 
-    prob <- exp(temp4)
+    logprob1 <- sum(t(apply(Z, 1, diff))^2) * (alpha - proposal.alpha)
+    Z.vec <- as.numeric(Z[ ,-N])       
+    norm1 <- norm(Z=Z.vec, G=G, Gstar=Gstar, alpha=alpha, delta=delta, SS=1:G, K=K, Nall=length(Z.vec))
+    norm2 <- norm(Z=Z.vec, G=G, Gstar=Gstar, alpha=proposal.alpha, delta=delta, SS=1:G, K=K, Nall=length(Z.vec))       
+    prob <- exp(logprob1 + norm1[2] - norm2[2])       
     if(prob > runif(1))
     {
       alpha <- proposal.alpha
@@ -428,11 +465,28 @@ N <- N.all / K
     }else
     {
     }
-    accept[4] <- accept[4] + 1           
+    accept[4] <- accept[4] + 1  
+       
     
-    
-    
-    
+    ######################
+    #### Sample from delta
+    ######################
+    proposal.delta <-  rtrunc(n=1, spec="norm", a=0, b=prior.delta, mean=delta, sd=proposal.sd.delta)    
+    logprob1 <- sum((Z-Gstar)^2) * (delta - proposal.delta)     
+    norm1 <- norm(Z=Z.vec, G=G, Gstar=Gstar, alpha=alpha, delta=delta, SS=1:G, K=K, Nall=length(Z.vec))
+    norm2 <- norm(Z=Z.vec, G=G, Gstar=Gstar, alpha=alpha, delta=proposal.delta, SS=1:G, K=K, Nall=length(Z.vec))       
+    prob <- exp(logprob1 + sum(norm1) - sum(norm2))       
+    if(prob > runif(1))
+    {
+      delta <- proposal.delta
+      accept[11] <- accept[11] + 1  
+    }else
+    {
+    }
+    accept[12] <- accept[12] + 1           
+  
+       
+       
     #######################
     #### Sample from sigma2
     #######################
@@ -441,8 +495,8 @@ N <- N.all / K
     {
       SS <- SS + t(lambda[ ,r]) %*% V %*% lambda[ ,r]     
     }
-    sigma2.posterior.scale <- 0.5 * SS + prior.sigma2[2] 
-    sigma2 <- 1 / rgamma(1, sigma2.posterior.shape, scale=(1/sigma2.posterior.scale))
+    sigma2.scale <- 0.5 * SS + prior.sigma2[2] 
+    sigma2 <- 1 / rgamma(1, sigma2.shape, scale=(1/sigma2.scale))
     
     
     
@@ -476,10 +530,12 @@ N <- N.all / K
     #########################
     ## Calculate the deviance
     #########################
-    fitted <- as.numeric(exp(mu + offset.mat + phi + regression.mat))
-    deviance <- dpois(x=as.numeric(Y), lambda=fitted)               
-     
+    fitted <- as.numeric(exp(mu + offset.mat + phi + regression.mat))             
+    deviance.all <- dpois(x=as.numeric(Y), lambda=fitted)
+    deviance.all[deviance.all==0] <- min(deviance.all[deviance.all!=0])
+    deviance <- -2 * sum(log(deviance.all))         
     
+       
     ###################
     ## Save the results
     ###################
@@ -492,6 +548,8 @@ N <- N.all / K
       samples.sigma2[ele, ] <- sigma2
       samples.rho[ele, ] <- rho
       samples.alpha[ele, ] <- alpha
+      samples.gamma[ele, ] <- gamma
+      samples.delta[ele, ] <- delta
       samples.lambda[ele, ] <- as.numeric(lambda)
       samples.Z[ele, ] <- as.numeric(Z)
       samples.deviance[ele, ] <- deviance
@@ -513,8 +571,9 @@ N <- N.all / K
       accept.alpha <- 100 * accept[3] / accept[4]
       accept.rho <- 100 * accept[7] / accept[8]
       accept.beta <- 100 * accept[9] / accept[10]
+      accept.delta <- 100 * accept[11] / accept[12]
       accept.all <- accept.all + accept
-      accept <- rep(0,10)
+      accept <- rep(0,12)
       
       #### phi tuning parameter
       if(accept.phi > 60)
@@ -570,6 +629,17 @@ N <- N.all / K
      }else
      {
      }
+         
+      #### delta tuning parameter               
+      if(accept.delta > 70)
+      {
+        proposal.sd.delta <- 2 * proposal.sd.delta
+      }else if(accept.delta < 40)              
+      {
+        proposal.sd.delta <- 0.5 * proposal.sd.delta
+      }else
+      {
+      }
     }else
     {   
     }
@@ -603,23 +673,13 @@ N <- N.all / K
   accept.alpha <- 100 * accept.all[3] / accept.all[4]
   accept.rho <- 100 * accept.all[7] / accept.all[8]
   accept.beta <- 100 * accept.all[9] / accept.all[10]
-  accept.final <- c(accept.beta, accept.lambda, accept.alpha, accept.phi, accept.rho)
-  names(accept.final) <- c("beta", "lambda", "alpha", "phi", "rho")
+  accept.delta <- 100 * accept.all[11] / accept.all[12]
+  accept.final <- c(accept.beta, accept.lambda, accept.alpha, accept.phi, accept.rho, accept.delta)
+  names(accept.final) <- c("beta", "lambda", "alpha", "phi", "rho", "delta")
   
   
   ## Summarise the Z results
-  posterior.Z <- array(NA, c(N*K, (G+1)))
-  for(i in 1:(N*K))
-  {
-    for(j in 1:G)
-    {
-      posterior.Z[i,j] <- length(which(samples.Z[ ,i]==j)) / n.keep
-    }
-    temp <- which(posterior.Z[i, 1:G]==max(posterior.Z[i, 1:G]))
-    posterior.Z[i, (G+1)] <- median(temp)
-  }
-  median.Z <- matrix(posterior.Z[ ,(G+1)], nrow=K, ncol=N)     
-  posterior.Z <- posterior.Z[ ,1:G]
+  median.Z <- matrix(apply(samples.Z,2,median), nrow=K, ncol=N)     
   
   
   ## Compute information criterion (DIC, DIC3, WAIC)
@@ -637,19 +697,17 @@ N <- N.all / K
   fitted.median <- as.numeric(exp(median.mu + offset.mat + median.phi + regression.mat))
   samples.deviance[samples.deviance==0] <- min(samples.deviance[samples.deviance!=0])
   deviance.fitted <- -2 * sum(dpois(x=as.numeric(Y), lambda=fitted.median, log=TRUE))
-  deviance.sum <- apply(-2 * log(samples.deviance), 1, sum)
-  p.d <- median(deviance.sum) - deviance.fitted
-  DIC <- 2 * median(deviance.sum) - deviance.fitted
-  like.fitted <- apply(samples.deviance, 2, median)
-  DIC3 <- 2 * median(deviance.sum)   + 2 * sum(log(like.fitted))     
-  lppd <- sum(log(like.fitted))
-  p.waic <- sum(apply(log(samples.deviance),2,var))
-  WAIC <- -2 * (lppd - p.waic)       
-  
-  #### Compute the Conditional Predictive Ordinate
-  CPO.temp <- 1 / samples.deviance
-  CPO <- 1/apply(CPO.temp, 2, median)
-  LMPL <- sum(log(CPO)) 
+  p.d <- median(samples.deviance) - deviance.fitted
+  DIC <- 2 * median(samples.deviance) - deviance.fitted     
+
+     
+  ## Compute the LMPL
+  CPO <- rep(NA, N.all)
+     for(j in 1:N.all)
+     {
+     CPO[j] <- 1/median((1 / dpois(x=Y[j], lambda=samples.fitted[ ,j])))    
+     }
+  LMPL <- sum(log(CPO))  
   
   
   ## Create the Fitted values
@@ -683,17 +741,21 @@ summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.beta,p))
 rownames(summary.beta) <- colnames(X)
 colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept")
 
-summary.hyper <- array(NA, c(4, 5))     
+summary.hyper <- array(NA, c(6, 5))     
 summary.hyper[1,1:3] <- quantile(samples.tau2, c(0.5, 0.025, 0.975))
 summary.hyper[2,1:3] <- quantile(samples.rho, c(0.5, 0.025, 0.975))
 summary.hyper[3,1:3] <- quantile(samples.sigma2, c(0.5, 0.025, 0.975))
 summary.hyper[4,1:3] <- quantile(samples.alpha, c(0.5, 0.025, 0.975))
-rownames(summary.hyper) <- c("tau2", "rho", "sigma2", "alpha")     
+summary.hyper[5,1:3] <- quantile(samples.delta, c(0.5, 0.025, 0.975))
+summary.hyper[6,1:3] <- quantile(samples.gamma, c(0.5, 0.025, 0.975))
+rownames(summary.hyper) <- c("tau2", "rho", "sigma2", "alpha", "delta", "gamma")     
 summary.hyper[1, 4:5] <- c(n.keep, 100)     
 summary.hyper[2, 4:5] <- c(n.keep, accept.rho)   
 summary.hyper[3, 4:5] <- c(n.keep, 100)   
 summary.hyper[4, 4:5] <- c(n.keep, accept.alpha)   
-
+summary.hyper[5, 4:5] <- c(n.keep, accept.delta)   
+summary.hyper[6, 4:5] <- c(n.keep, 100)   
+     
 summary.results <- rbind(summary.beta, summary.hyper)
 summary.results <- summary.results[-which(X.indicator==2), ]
 summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
@@ -701,18 +763,18 @@ summary.results[ , 4:5] <- round(summary.results[ , 4:5], 1)
 
      
 ## Compile and return the results
-  modelfit <- c(DIC, p.d, DIC3, WAIC, p.waic, LMPL)
-  names(modelfit) <- c("DIC", "p.d", "DIC3", "WAIC", "p.waic", "LMPL")
+  modelfit <- c(DIC, p.d, LMPL)
+  names(modelfit) <- c("DIC", "p.d", "LMPL")
 
      if(length(which(X.indicator==2))==p)
      {
-     samples <- list(lambda=mcmc(samples.lambda),  alpha=mcmc(samples.alpha), Z=mcmc(samples.Z), sigma2=mcmc(samples.sigma2), phi=mcmc(samples.phi), tau2=mcmc(samples.tau2), rho=mcmc(samples.rho), fitted=mcmc(samples.fitted))
+     samples <- list(lambda=mcmc(samples.lambda),  alpha=mcmc(samples.alpha), Z=mcmc(samples.Z), sigma2=mcmc(samples.sigma2), phi=mcmc(samples.phi), tau2=mcmc(samples.tau2), rho=mcmc(samples.rho), gamma=mcmc(samples.gamma), delta=mcmc(samples.delta), fitted=mcmc(samples.fitted))
      }else
      {
-     samples <- list(beta=mcmc(samples.beta.orig[ ,-which(X.indicator==2)]), lambda=mcmc(samples.lambda),  alpha=mcmc(samples.alpha), Z=mcmc(samples.Z), sigma2=mcmc(samples.sigma2), phi=mcmc(samples.phi), tau2=mcmc(samples.tau2), rho=mcmc(samples.rho), fitted=mcmc(samples.fitted))
+     samples <- list(beta=mcmc(samples.beta.orig[ ,-which(X.indicator==2)]), lambda=mcmc(samples.lambda),  alpha=mcmc(samples.alpha), Z=mcmc(samples.Z), sigma2=mcmc(samples.sigma2), phi=mcmc(samples.phi), tau2=mcmc(samples.tau2), rho=mcmc(samples.rho), gamma=mcmc(samples.gamma), delta=mcmc(samples.delta), fitted=mcmc(samples.fitted))
      }
-model.string <- c("Likelihood model - Poisson (log link function)", "\nLatent structure model - Clustering model with CAR random effects\n")
-     results <- list(formula=formula, samples=samples, fitted.values=fitted.values, residuals=residuals, posterior.Z=posterior.Z, median.Z=median.Z, modelfit=modelfit, summary.results=summary.results, model=model.string,  accept=accept.final)
+model.string <- c("Likelihood model - Poisson (log link function)", "\nLatent structure model - Clustering model with autoregressive CAR random effects\n")
+     results <- list(formula=formula, samples=samples, fitted.values=fitted.values, residuals=residuals, stepchange=median.Z, modelfit=modelfit, summary.results=summary.results, model=model.string,  accept=accept.final)
   class(results) <- "carbayesST"
      if(verbose)
      {

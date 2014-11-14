@@ -1,4 +1,4 @@
-ST.knorrheld.int <- function(formula, data=NULL, W, burnin=0, n.sample=1000, thin=1,  blocksize.beta=5, prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, verbose=TRUE)
+ST.KHinteraction <- function(formula, data=NULL, W, burnin=0, n.sample=1000, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, verbose=TRUE)
 {
 #### Check on the verbose option
      if(is.null(verbose)) verbose=TRUE     
@@ -106,9 +106,6 @@ N <- N.all / K
   if(burnin!=round(burnin)) stop("burnin is not an integer.", call.=FALSE) 
   if(n.sample!=round(n.sample)) stop("n.sample is not an integer.", call.=FALSE) 
   if(thin!=round(thin)) stop("thin is not an integer.", call.=FALSE) 
-  if(!is.numeric(blocksize.beta)) stop("blocksize.beta is not a number", call.=FALSE)
-  if(blocksize.beta <= 0) stop("blocksize.beta is less than or equal to zero", call.=FALSE)
-  if(!(floor(blocksize.beta)==ceiling(blocksize.beta))) stop("blocksize.beta has non-integer values.", call.=FALSE)
   
   
   #### Check and specify the priors
@@ -145,6 +142,7 @@ N <- N.all / K
   tau2.gamma <- runif(1)  
   
 ## Compute the blocking structure for beta     
+blocksize.beta <- 5
      if(blocksize.beta >= p)
      {
      n.beta.block <- 1
@@ -174,11 +172,12 @@ N <- N.all / K
   samples.beta <- array(NA, c(n.keep, p))
   samples.space <- array(NA, c(n.keep, K))
   samples.time <- array(NA, c(n.keep, N))
-  samples.gamma <- array(NA, c(n.keep, (N*K)))
+  samples.gamma <- array(NA, c(n.keep, N.all))
   samples.tau2 <- array(NA, c(n.keep, 5))
   colnames(samples.tau2) <- c("tau2.phi", "tau2.theta", "tau2.alpha", "tau2.beta", "tau2.gamma")
-  samples.deviance <- array(NA, c(n.keep, (N*K)))
-  samples.fitted <- array(NA, c(n.keep, (N*K)))
+  samples.fitted <- array(NA, c(n.keep, N.all))
+  samples.deviance <- array(NA, c(n.keep, 1))
+
   
   
   #### Specify the Metropolis quantities
@@ -353,7 +352,7 @@ timelist[[N]] <- N-1
     #######################
     ## Sample from tau2.phi
     #######################
-    tau2.phi.scale <- prior.tau2[2]  + quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi, nneighbours=n.neighbours.space, diagonal=1, offdiagonal=1)      
+    tau2.phi.scale <- prior.tau2[2]  + quadform(W_duplet1=space.duplet[ ,1], W_duplet2=space.duplet[ ,2], n_duplet=n.space.duplet,  nsites=K, phi=phi, theta=phi, nneighbours=n.neighbours.space, diagonal=1, offdiagonal=1)      
     tau2.phi <- 1 / rgamma(1, tau2.phi.shape, scale=(1/tau2.phi.scale)) 
     
     
@@ -389,7 +388,9 @@ timelist[[N]] <- N-1
     ## Calculate the deviance
     #########################
     fitted <- as.numeric(exp(offset.mat + regression.mat + phi.mat + theta.mat + alpha.mat + delta.mat + gamma.mat))
-    deviance <- dpois(x=as.numeric(Y), lambda=fitted)               
+    deviance.all <- dpois(x=as.numeric(Y), lambda=fitted)
+    deviance.all[deviance.all==0] <- min(deviance.all[deviance.all!=0])
+    deviance <- -2 * sum(log(deviance.all))    
     
     
     ###################
@@ -526,32 +527,28 @@ timelist[[N]] <- N-1
   names(accept.final) <- c("beta", "phi", "theta", "alpha", "gamma", "delta")
   
   
-  ## Compute information criterion (DIC, DIC3, WAIC)
+  ## Compute DIC
   median.space <- apply(samples.space, 2, median)
   median.time <- apply(samples.time, 2, median)  
   median.space.mat <- matrix(rep(median.space, N), byrow=F, nrow=K)
   median.time.mat <- matrix(rep(median.time, K), byrow=T, nrow=K)
   median.gamma <- apply(samples.gamma, 2,median)
-  samples.deviance[samples.deviance==0] <- min(samples.deviance[samples.deviance!=0])
   median.beta <- apply(samples.beta,2,median)
   regression.mat <- matrix(X.standardised %*% median.beta, nrow=K, ncol=N, byrow=FALSE)   
   fitted.median <- as.numeric(exp(offset.mat + regression.mat + median.space.mat + median.time.mat + median.gamma))
   deviance.fitted <- -2 * sum(dpois(x=as.numeric(Y), lambda=fitted.median, log=TRUE))
-  deviance.sum <- apply(-2 * log(samples.deviance), 1, sum)
-p.d <- median(deviance.sum) - deviance.fitted
-DIC <- 2 * median(deviance.sum) - deviance.fitted
-like.fitted <- apply(samples.deviance, 2, median)
-DIC3 <- 2 * median(deviance.sum)   + 2 * sum(log(like.fitted))     
-lppd <- sum(log(like.fitted))
-p.waic <- sum(apply(log(samples.deviance),2,var))
-WAIC <- -2 * (lppd - p.waic)       
-
+  p.d <- median(samples.deviance) - deviance.fitted
+  DIC <- 2 * median(samples.deviance) - deviance.fitted  
+     
   
-  #### Compute the Conditional Predictive Ordinate
-  CPO.temp <- 1 / samples.deviance
-  CPO <- 1/apply(CPO.temp, 2, median)
-  LMPL <- sum(log(CPO)) 
-  
+  ## Compute the LMPL
+  CPO <- rep(NA, N.all)
+     for(j in 1:N.all)
+     {
+     CPO[j] <- 1/median((1 / dpois(x=Y[j], lambda=samples.fitted[ ,j])))    
+     }
+  LMPL <- sum(log(CPO))  
+       
   
   ## Create the Fitted values
   fitted.values <- apply(samples.fitted, 2, median)
@@ -613,11 +610,11 @@ summary.results[ , 4:5] <- round(summary.results[ , 4:5], 1)
      
 
 ## Compile and return the results
-  modelfit <- c(DIC, p.d, DIC3, WAIC, p.waic, LMPL)
-  names(modelfit) <- c("DIC", "p.d", "DIC3", "WAIC", "p.waic", "LMPL")
+  modelfit <- c(DIC, p.d, LMPL)
+  names(modelfit) <- c("DIC", "p.d", "LMPL")
   samples <- list(beta=mcmc(samples.beta.orig), space=mcmc(samples.space),  time=mcmc(samples.time), tau2=mcmc(samples.tau2), gamma=mcmc(samples.gamma), fitted=mcmc(samples.fitted))
 model.string <- c("Likelihood model - Poisson (log link function)", "\nLatent structure model - Convolution of spatial and temporal main effects and independent interactions\n")
-results <- list(formula=formula, samples=samples, fitted.values=fitted.values, residuals=residuals, posterior.Z=NULL, median.Z=NULL, modelfit=modelfit, summary.results=summary.results, model=model.string,  accept=accept.final)
+results <- list(formula=formula, samples=samples, fitted.values=fitted.values, residuals=residuals, stepchange=NULL, modelfit=modelfit, summary.results=summary.results, model=model.string,  accept=accept.final)
   class(results) <- "carbayesST"
      if(verbose)
      {

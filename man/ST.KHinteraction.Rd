@@ -1,20 +1,19 @@
-\name{ST.knorrheld.main}
-\alias{ST.knorrheld.main}
+\name{ST.KHinteraction}
+\alias{ST.KHinteraction}
 
 
 \title{
-Fit the separable space-time Poisson log-linear model proposed by Knorr-Held and Besag (1998).
+Fit the space-time Poisson log-linear model proposed by Knorr-Held (2000) with separable spatio-temporal main effects and an independent space-time interaction.
 }
 
 \description{
-The function fits the Bayesian spatio-temporal model proposed by Knorr-Held and Besag (1998) to Poisson count data. The natural log of the linear predictor is made up of 5 terms, an intercept term, two spatial random effects, correlated and independent, and two temporal random effects, correlated and independent. The independent random effects are assigned zero-mean Gaussian priors with a common variance, while the correlated effects are modelled by intrinsic conditional  autoregressive models respectively. Inference is based on Markov chain Monte Carlo (McMC) simulation, using a combination of Gibbs sampling and Metropolis steps.
+The function fits the Bayesian spatio-temporal model proposed by Knorr-Held (2000) to Poisson count data. The natural log of the linear predictor is made up of 6 terms, a covariate component, two spatial random effects, correlated and independent, and two temporal random effects, correlated and independent, and independent space-time interactions. The independent random effects are assigned zero-mean Gaussian priors with a common variance, while the correlated effects are modelled by intrinsic conditional  autoregressive (ICAR) and first order random walk (RW) models respectively. Inference is based on Markov chain Monte Carlo (McMC) simulation, using a combination of Gibbs sampling and Metropolis steps.
 }
 
 
 \usage{
-ST.knorrheld.main(formula, data=NULL, W, burnin=0, n.sample=1000, thin=1,  
-blocksize.beta=5, prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, 
-verbose=TRUE)
+ST.KHinteraction(formula, data=NULL, W, burnin=0, n.sample=1000, thin=1,  
+prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, verbose=TRUE)
 }
 
 \arguments{
@@ -22,7 +21,7 @@ verbose=TRUE)
 A formula for the covariate part of the model, using the same notation as for the lm() function. The offsets should also be included here using the offset() function. The response and each covariate should be vectors of length (KN)*1, where K is the number of spatial units and N is the number of time periods. Each vector should be ordered so that the first K data points are the set of all K spatial locations at time 1, the next K are the set of spatial points for time 2 and so on.
 }
 \item{data}{
-The matrix of offsets on the fitted value scale, such as the population size or the expected number of counts. Each row corresponds to an areal unit and each column to a time period.
+A data.frame containing the  variables in the formula.
 }
  \item{W}{
 A binary K by K neighbourhood matrix (where K is the number of spatial units). The jkth element equals one if areas (j, k) are spatially close (e.g. share a common border) and is zero otherwise. 
@@ -35,9 +34,6 @@ The number of MCMC samples to generate. Defaults to 1,000.
 }
   \item{thin}{
 The level of thinning to apply to the MCMC samples to reduce their temporal autocorrelation. Defaults to 1.
-}
-  \item{blocksize.beta}{
-The size of the blocks in which to update the regression parameters in the MCMC algorithm. Defaults to 5.
 }
   \item{prior.mean.beta}{
 A vector of prior means for the regression parameters beta (Gaussian priors are assumed). Defaults to a vector of zeros.
@@ -54,7 +50,7 @@ Logical, should the function update the user on its progress.
 }
 
 \details{
-For further details about how to apply the function see the examples below and in the vignette.
+For further details about how to apply the function see the examples below.
 }
 
 
@@ -63,15 +59,13 @@ For further details about how to apply the function see the examples below and i
 
 \item{samples }{A list containing the MCMC samples from the model.}
 
-\item{fitted.values }{A vector containing the fitted value for each area and time point. The vector is ordered so that all spatial units at time one come first and then at time two and so on.}
+\item{fitted.values }{A vector containing the fitted value for each area and time point. The vector is ordered so that all spatial units for time period one come first and then time period two and so on.}
 
-\item{residuals }{A vector containing the residuals for each area and time point. The vector is ordered so that all spatial units at time one come first and then at time two and so on.}
+\item{residuals }{A vector containing the residuals for each area and time point. The vector is ordered so that all spatial units for time period one come first and then time period two and so on.}
 
-\item{posterior.Z }{This argument is NULL and is included for comparibility in the output object with the other models in this package.}
+\item{stepchange }{This argument is NULL and is included for comparibility in the output object with the other models in this package.}
 
-\item{median.Z }{This argument is NULL and is included for comparibility in the output object with the other models in this package.}
-
-\item{modelfit }{Model fit criteria including the Deviance Information Criterion (DIC), the effective number of parameters in the model (p.d), DIC3, Watanabe-Akaike Information Criterion (WAIC), and the log Marginal Predictive Likelihood (LMPL).}
+\item{modelfit }{Model fit criteria including the Deviance Information Criterion (DIC), the effective number of parameters in the model (p.d), and the log Marginal Predictive Likelihood (LMPL).}
 
 \item{summary.results }{A table summarising some of the parameters in the model.}
 
@@ -83,8 +77,9 @@ For further details about how to apply the function see the examples below and i
 
 
 
+
 \references{
-Knorr-Held, L. and J. Besag (1998). Modelling Risk from a Disease in Time and Space. Statistics in Medicine 17, 2045-2060.
+Knorr-Held, L. (2000). Bayesian modelling of inseparable space-time variation in disease risk. Statistics in Medicine, 19, 2555-2567.
 }
 
 \author{
@@ -131,5 +126,5 @@ formula <- Y~ offset(log(E)) + x
      
 
 #### Run the model     
-\dontrun{model1 <- ST.knorrheld.main(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
+\dontrun{model2 <- ST.KHinteraction(formula, data=NULL, W=W, burnin=5000, n.sample=10000)}
 }

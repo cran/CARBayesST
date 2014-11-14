@@ -1,6 +1,23 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
+// This file contains the following functions:
+
+// linpredcompute - computing the linear predictor for covariates.
+// quadform - computing quadratic forms phi %*% Q %*% theta.
+// poissoncarupdate - for updating spatial CAR effects based on a poisson likelihood.
+// poissonindepupdate - for updating independent effects based on a poisson likelihood.
+// poissonbetaupdate - for updating covariate effects based on a poisson likelihood.
+// poissonarcarupdate - for updating spatio-temporal ARCAR effects based on a poisson likelihood.
+// Zupdate - for updating the allocation variables Z in the cluster models.
+// norm - for computing the normalising constant for the parameters controlling the Z prior.
+// qform - computing a quadratic form from a triplet phi %*% Q %*% phi.
+// qform_asym - computing a quadratic form from a triplet of the form phi %*% Q %*% theta.
+// qformSPACETIME - computing a quadratic form in space nad time.
+// SPTICARphiVarb - update space time ARCAR random effects from a varying non-binary W.
+// updatetripList - update the triplet form of W based on a new estimate of W.
+
+
 // [[Rcpp::export]]
 NumericVector linpredcompute(NumericMatrix X, const int nsites, const int p, 
                           NumericVector beta, NumericVector offset)
@@ -26,9 +43,13 @@ double temp;
 return linpred;
 }
 
+
+
+
 // [[Rcpp::export]]
 double quadform(IntegerVector W_duplet1, IntegerVector W_duplet2, const int n_duplet, const int nsites, 
-                NumericVector phi, NumericVector nneighbours, double diagonal, double offdiagonal)
+                NumericVector phi, NumericVector theta, NumericVector nneighbours, 
+                double diagonal, double offdiagonal)
 {
   // Compute a quadratic form for the random effects
   // Create new objects 
@@ -42,14 +63,14 @@ double quadform(IntegerVector W_duplet1, IntegerVector W_duplet2, const int n_du
   {
     row = W_duplet1[l] - 1;
     col = W_duplet2[l] - 1;
-    tau2_quadform = tau2_quadform + phi[row] * phi[col]; 
+    tau2_quadform = tau2_quadform + phi[row] * theta[col]; 
   }
   
   
   // Compute the diagonal elements of the quadratic form          
   for(int l = 0; l < nsites; l++)
   {
-    tau2_phisq =  tau2_phisq + pow(phi[l],2) * (diagonal * nneighbours[l] + 1 - diagonal);
+    tau2_phisq =  tau2_phisq + phi[l] * theta[l] * (diagonal * nneighbours[l] + 1 - diagonal);
   }
   
   
@@ -59,7 +80,6 @@ double quadform(IntegerVector W_duplet1, IntegerVector W_duplet2, const int n_du
   // Return the simulated value
   return tau2_posteriorscale;
 }
-
 
 
 
@@ -203,8 +223,158 @@ return acceptance;
 
 
 // [[Rcpp::export]]
+List poissonarcarupdate(List W_list, const int nsites, const int ntime,
+          NumericMatrix phi, double tau2, double gamma, double rho, 
+          const NumericMatrix ymat, const double phi_tune, NumericMatrix offset,
+          NumericVector denoffset)
+{    
+// Update the spatially correlated random effects 
+double sumphi1, sumphi2, sumphi3, priormeantemp1, priormeantemp2, priormeantemp3, priorvartemp1;
+double priorvar, priormean, propphi, acceptance;
+double oldpriorbit, newpriorbit, oldlikebit, newlikebit;
+NumericMatrix phinew(nsites,ntime);
+phinew = phi;
+int accept = 0;
+
+// Update the random effects at time 1 in turn
+     for(int j = 0; j < nsites; j++)
+     {
+     // calculate prior mean and variance
+     IntegerVector neighbourvec = W_list[j];
+     int m = neighbourvec.size();
+     sumphi1 = 0;
+     sumphi2 = 0;
+          for(int l = 0; l < m; l++)
+          {
+          sumphi1 += phinew((neighbourvec[l]-1),0);
+          sumphi2 += phinew((neighbourvec[l]-1),1);
+          }      
+      priormeantemp1 = (1 + pow(gamma,2)) * rho * sumphi1;
+      priormeantemp2 = gamma * (denoffset[j] * phi(j,1)  - rho * sumphi2);
+      priorvartemp1 = denoffset[j] * (1 + pow(gamma,2));
+      priormean = (priormeantemp1 + priormeantemp2) / priorvartemp1;
+      priorvar = tau2 / priorvartemp1;      
+      
+      // propose a value  
+      propphi = rnorm(1, phinew(j,0), sqrt(priorvar*phi_tune))[0];
+      
+      // Accept or reject it
+      newpriorbit = (0.5/priorvar) * pow((propphi - priormean), 2); 
+      oldpriorbit = (0.5/priorvar) * pow((phinew(j,0) - priormean), 2);
+      oldlikebit = phinew(j,0) * ymat(j,0)  - exp(phinew(j,0)) * offset(j,0);
+      newlikebit =  propphi * ymat(j,0)  - exp(propphi) * offset(j,0);
+      acceptance = exp(oldpriorbit - newpriorbit - oldlikebit + newlikebit);
+          if(runif(1)[0] <= acceptance) 
+          {
+          phinew(j,0) = propphi;
+          accept = accept + 1;
+          }
+          else
+          { 
+          }
+    }
+
+
+
+
+// Update the random effects at times 2 to ntime-1 in turn
+     for(int t = 1; t < (ntime-1); t++)
+     {
+          for(int j = 0; j < nsites; j++)
+          {
+          // calculate prior mean and variance
+          IntegerVector neighbourvec = W_list[j];
+          int m = neighbourvec.size();
+          sumphi1 = 0;
+          sumphi2 = 0;
+          sumphi3 = 0;
+               for(int l = 0; l < m; l++)
+               {
+               sumphi1 += phinew((neighbourvec[l]-1),t);
+               sumphi2 += phinew((neighbourvec[l]-1),(t-1));
+               sumphi3 += phinew((neighbourvec[l]-1),(t+1));
+               }      
+          priormeantemp1 = (1 + pow(gamma,2)) * rho * sumphi1;
+          priormeantemp2 = gamma * (denoffset[j] * phi(j,(t-1))  - rho * sumphi2);
+          priormeantemp3 = gamma * (denoffset[j] * phi(j,(t+1))  - rho * sumphi3);
+          priorvartemp1 = denoffset[j] * (1 + pow(gamma,2));
+          priormean = (priormeantemp1 + priormeantemp2 + priormeantemp3) / priorvartemp1;
+          priorvar = tau2 / priorvartemp1;      
+      
+          // propose a value  
+          propphi = rnorm(1, phinew(j,t), sqrt(priorvar*phi_tune))[0];
+      
+          // Accept or reject it
+          newpriorbit = (0.5/priorvar) * pow((propphi - priormean), 2); 
+          oldpriorbit = (0.5/priorvar) * pow((phinew(j,t) - priormean), 2);
+          oldlikebit = phinew(j,t) * ymat(j,t)  - exp(phinew(j,t)) * offset(j,t);
+          newlikebit =  propphi * ymat(j,t)  - exp(propphi) * offset(j,t);
+          acceptance = exp(oldpriorbit - newpriorbit - oldlikebit + newlikebit);
+               if(runif(1)[0] <= acceptance) 
+               {
+               phinew(j,t) = propphi;
+               accept = accept + 1;
+               }
+               else
+               { 
+               }
+          }
+    
+     }  
+          
+
+
+// Update the random effects at time ntime in turn
+     for(int j = 0; j < nsites; j++)
+     {
+     // calculate prior mean and variance
+     IntegerVector neighbourvec = W_list[j];
+     int m = neighbourvec.size();
+     sumphi1 = 0;
+     sumphi2 = 0;
+          for(int l = 0; l < m; l++)
+          {
+          sumphi1 += phinew((neighbourvec[l]-1),(ntime-1));
+          sumphi2 += phinew((neighbourvec[l]-1),(ntime-2));
+          }      
+      priormeantemp1 = rho * sumphi1;
+      priormeantemp2 = gamma * (denoffset[j] * phi(j,(ntime-2))  - rho * sumphi2);
+      priorvartemp1 = denoffset[j];
+      priormean = (priormeantemp1 + priormeantemp2) / priorvartemp1;
+      priorvar = tau2 / priorvartemp1;      
+      
+      // propose a value  
+      propphi = rnorm(1, phinew(j,(ntime-1)), sqrt(priorvar*phi_tune))[0];
+      
+      // Accept or reject it
+      newpriorbit = (0.5/priorvar) * pow((propphi - priormean), 2); 
+      oldpriorbit = (0.5/priorvar) * pow((phinew(j,(ntime-1)) - priormean), 2);
+      oldlikebit = phinew(j,(ntime-1)) * ymat(j,(ntime-1))  - exp(phinew(j,(ntime-1))) * offset(j,(ntime-1));
+      newlikebit =  propphi * ymat(j,(ntime-1))  - exp(propphi) * offset(j,(ntime-1));
+      acceptance = exp(oldpriorbit - newpriorbit - oldlikebit + newlikebit);
+          if(runif(1)[0] <= acceptance) 
+          {
+          phinew(j,(ntime-1)) = propphi;
+          accept = accept + 1;
+          }
+          else
+          { 
+          }
+    }
+
+
+
+List out(2);
+out[0] = phinew;
+out[1] = accept;
+return out;
+}
+
+
+
+// [[Rcpp::export]]
 NumericMatrix Zupdate(NumericMatrix Z, NumericMatrix Offset, NumericMatrix Y, const double alpha, 
-NumericMatrix lambda, const int nsites, const int ntime, const int G, NumericVector SS,double Gstar)
+NumericMatrix lambda, const int nsites, const int ntime, const int G, NumericVector SS,double Gstar, double delta)
 {
 //Create the new copy of Z
 NumericMatrix Znew(nsites, ntime);
@@ -229,11 +399,9 @@ lambdacurrent = lambda(0 , _);
      like1 = Y(k,0) * lambdacurrent - exp(lambdacurrent) * Offset(k,0);
 
      // Compute the prior part
-     //prior1 = exp(-alpha * abs(SS - Znew(k,1)) - abs(SS - Gstar));
-     prior1 = exp(-alpha * pow(SS - Znew(k,1),2) - pow(SS - Gstar,2));
+     prior1 = exp(-alpha * pow(SS - Znew(k,1),2) - delta * pow(SS - Gstar,2));
      prior2 = log(prior1 / sum(prior1));    
-     //prior3 = exp(- abs(SS - Gstar));
-     prior3 = exp(- pow(SS - Gstar,2));
+     prior3 = exp(- delta * pow(SS - Gstar,2));
      prior4 = log(prior3 / sum(prior3));    
 
      // Compute the posterior probability
@@ -271,11 +439,9 @@ lambdacurrent = lambda(0 , _);
           like1 = Y(k,j) * lambdacurrent - exp(lambdacurrent) * Offset(k,j);
           
           // Compute the Markov prior component
-          //prior1 = exp(-alpha * abs(SS - Znew(k,(j-1))) - abs(SS - Gstar));
-          prior1 = exp(-alpha * pow(SS - Znew(k,(j-1)),2) - pow(SS - Gstar,2));
+          prior1 = exp(-alpha * pow(SS - Znew(k,(j-1)),2) - delta * pow(SS - Gstar,2));
           prior2 = log(prior1 / sum(prior1));    
-          //prior3 = exp(-alpha * abs(SS - Znew(k,(j+1))) - abs(SS - Gstar));
-          prior3 = exp(-alpha * pow(SS - Znew(k,(j+1)),2) - pow(SS - Gstar,2));
+          prior3 = exp(-alpha * pow(SS - Znew(k,(j+1)),2) - delta * pow(SS - Gstar,2));
           prior4 = log(prior3 / sum(prior3));    
           
           // Compute the posterior probabilities
@@ -311,8 +477,7 @@ lambdacurrent = lambda(ntimeminus , _);
      like1 = Y(k,ntimeminus) * lambdacurrent - exp(lambdacurrent) * Offset(k,ntimeminus);
 
      // Compute the prior part
-     //prior1 = exp(-alpha * abs(SS - Znew(k,(ntime-2))) - abs(SS - Gstar));
-     prior1 = exp(-alpha * pow(SS - Znew(k,(ntime-2)),2) - pow(SS - Gstar,2));
+     prior1 = exp(-alpha * pow(SS - Znew(k,(ntime-2)),2) - delta * pow(SS - Gstar,2));
      prior2 = log(prior1 / sum(prior1));    
 
      // Compute the posterior probability
@@ -346,88 +511,210 @@ return Znew;
 
 
 
+
 // [[Rcpp::export]]
-double alphaupdate(IntegerMatrix Z, const int nsites, NumericMatrix logratio, 
-     const int ntime)
+NumericVector norm(NumericVector Z, double G, double Gstar, double alpha, 
+     double delta, NumericVector SS, const int K, const int Nall)
 {
-//Create the variable to save the log probability
-double logprob=0;
-int row, col;
-    
-//  Compute the probability
-     for(int j = 1; j < ntime; j++)
-     {
-          for(int l = 0; l < nsites; l++) 
-          {
-           row = Z(l, j-1) - 1;
-           col = Z(l, j) - 1;
-           logprob = logprob + logratio(row,col);
-          }
+// Elements to undertake the posterior sampling
+double c1=0, c2=0, temp=0;
+
+
+// Compute the normalising constant
+c1 = K * log(sum(exp(-delta * pow(SS - Gstar,2))));
+     
+     for(int k = 0; k < Nall; k++) 
+     {     
+     temp =  log(sum(exp(-alpha * pow(SS-Z[k],2) -delta * pow(SS - Gstar,2))));
+     c2 = c2 + temp;
      }
      
-// Return the log probability 
-return logprob;
+// Return the normalising constant
+NumericVector c3(2);
+c3[0] = c1;
+c3[1] = c2;
+return c3;
 }
 
 
 
 
 // [[Rcpp::export]]
-List Xupdate(NumericMatrix Wspace, NumericMatrix Y, NumericMatrix offset,
-     const int K, const int N, NumericMatrix X, double tau2, double proposalsdX)
-{
-//Create new objects
-int accept=0;
-NumericMatrix Xnew(K,N);
-NumericVector Xcurrent(K), convcurrent(K), convadjust(K);
-NumericVector Ytemp(K), offsettemp(K);
-double Xprop;
-double prob1, prob2, prob3, acceptance;
-            
-Xnew = X;
-   
-//  Update each random effect in turn
-     for(int t = 0; t < N; t++)
-     {
-     // Specify quantities that do not change
-     Ytemp = Y( _, t);
-     offsettemp = offset( _, t);
+double qform(NumericMatrix Qtrip, NumericVector phi){ 
+  int nzero = Qtrip.nrow();
+  double Qform = 0;
+  for(int i = 0; i < nzero; i++){
+    Qform += phi[Qtrip(i, 0) - 1] * Qtrip(i, 2) * phi[Qtrip(i, 1) - 1];
+  }
+  return(Qform);
+}
 
-     // Specify the weights for time t
-     Xcurrent = Xnew( _, t);   
-          for(int r = 0; r < K; r++)
-          {
-          convcurrent[r] = sum(Wspace(r, _) * Xcurrent);
-          }
 
-          for(int j = 0; j < K; j++)
-          {
-          // Propose a new value
-          Xprop = rnorm(1, Xcurrent[j], proposalsdX)[0];
-          convadjust = Wspace( _, j) * (Xprop - Xcurrent[j]);
-         
-          // Compute the acceptance probability
-          prob1 = sum(Ytemp * convadjust);
-          prob2 = sum(offsettemp * (exp(convcurrent) - exp(convcurrent  + convadjust))); 
-          prob3 = (pow(Xcurrent[j],2) - pow(Xprop,2)) / (2 * tau2); 
-          acceptance = exp(prob1 + prob2 + prob3);
-               if(runif(1)[0] <= acceptance) 
-               {
-               Xnew(j,t) = Xprop;
-               Xcurrent[j] = Xprop;
-               convcurrent = convcurrent + convadjust;
-               accept = accept + 1;
-               }
-               else
-               { 
-               }
+// [[Rcpp::export]]
+double qform_asym(NumericMatrix Qtrip, NumericVector phi1, NumericVector phi2){ 
+  int nzero = Qtrip.nrow();
+  double Qform = 0;
+  for(int i = 0; i < nzero; i++){
+    Qform += phi1[Qtrip(i, 0) - 1] * Qtrip(i, 2) * phi2[Qtrip(i, 1) - 1];
+  }
+  return(Qform);
+}
+
+// [[Rcpp::export]]
+double qformSPACETIME(NumericMatrix Qtrip, NumericVector phi, const int ntime, const int nsite){ 
+  int nzero = Qtrip.nrow();
+  double Qform = 0;
+  int spaceBlock = 0;
+  for(int j = 0; j < ntime; j++){
+    spaceBlock = j*nsite - 1;
+    for(int i = 0; i < nzero; i++){
+      Qform += phi[Qtrip(i, 0) + spaceBlock] * Qtrip(i, 2) * phi[Qtrip(i, 1) + spaceBlock];
+    }
+  }
+  return(Qform);
+}
+
+
+// [[Rcpp::export]]
+List SPTICARphiVarb(NumericMatrix W, const int nsites, const int ntimes, 
+                          NumericVector phiVarb, NumericVector nneighbours, double tau, 
+                          const NumericVector y, const NumericVector E, 
+                          const double phiVarb_tune, double alpha, NumericVector XB,
+                          const double beta_tune){
+  
+  //stuff associated with model objects
+  int n;
+  int k = ntimes*nsites;
+  
+  //General MCMC things
+  NumericVector accept(4);
+  double acceptance;
+  
+  // stuff associated with phiVarb update
+  double newpriorbit;
+  double oldpriorbit;
+  double sumphiVarb;
+  double gubbins;
+  double priorvardenom, priormean;
+  double priorvar;
+  double propphiVarb;
+  double futuresumphiVarb, pastsumphiVarb;
+  double asqOne = 1 + pow(alpha, 2); 
+  
+  // stuff associated with tau update
+  NumericVector arc(k);
+  //Function rtrunc("rtrunc");
+  
+  //  outer loop for each random effect
+  for(int i = 0; i < ntimes; i++) { 
+    for(int j = 0; j < nsites; j++){
+      sumphiVarb = 0;
+      futuresumphiVarb = 0;
+      pastsumphiVarb = 0;
+      n = (i*nsites) + j;
+      //  calulate the sum of the neighbours of j at time i
+      for(int l = 0; l < nsites; l++)  sumphiVarb +=  W(j, l) * phiVarb[i*nsites + l]; 
+      // calculate prior variance
+      priorvardenom = nneighbours[j];
+      // calculate prior mean of phiVarb_jt: different for t=1, t=n and else
+        if(ntimes > 1) {
+          if((0 < i) && (i < (ntimes-1))){
+            priormean = phiVarb[((i+1)*nsites) + j] + phiVarb[((i-1)*nsites) + j];
+            //calculate the sum of the neighbours of j in the past and the futuren
+            for(int l = 0; l < nsites; l++)  {
+              futuresumphiVarb +=  W(j, l) * phiVarb[(i+1)*nsites + l];
+              pastsumphiVarb +=  W(j, l) * phiVarb[(i-1)*nsites + l];
+            }
+            priormean = (alpha*priormean)/asqOne - (1/(priorvardenom*asqOne))*(alpha*futuresumphiVarb - asqOne*sumphiVarb + alpha*pastsumphiVarb);
+            priorvar = tau/(priorvardenom*asqOne);
+          } else if(i == 0) {
+            priormean = phiVarb[((i+1)*nsites) + j];
+            //calculate the sum of the neighbours of j in the future
+            for(int l = 0; l < nsites; l++)  futuresumphiVarb +=  W(j, l) * phiVarb[(i+1)*nsites + l];
+            priormean = (alpha*priormean)/asqOne - (1/(priorvardenom*asqOne))*(alpha*futuresumphiVarb - asqOne*sumphiVarb);
+            priorvar =  tau/(priorvardenom*asqOne);
+          } else if(i == (ntimes-1)) {
+            priormean = phiVarb[((i-1)*nsites) + j];
+            //calculate the sum of the neighbours of j in the past
+            for(int l = 0; l < nsites; l++)  pastsumphiVarb +=  W(j, l) * phiVarb[(i-1)*nsites + l];
+            priormean = (alpha*priormean) - (1/(priorvardenom))*(alpha*pastsumphiVarb - sumphiVarb);
+            priorvar = tau/(priorvardenom);
           }
+        } else if(ntimes == 1){
+          priorvar = tau/priorvardenom;
+          priormean = 1*sumphiVarb/priorvardenom; 
+        }
+      
+      // propose a value and accept or reject it 
+      propphiVarb = rnorm(1, phiVarb[n], sqrt(priorvar*phiVarb_tune))[0];    
+      newpriorbit = (0.5/priorvar) * pow(propphiVarb - priormean, 2); 
+      oldpriorbit = (0.5/priorvar) * pow(phiVarb[n] - priormean, 2);
+      gubbins = exp(E[n] + XB[n])*(exp(propphiVarb) - exp(phiVarb[n]));
+      acceptance = exp(y[n]*(propphiVarb - phiVarb[n]) - newpriorbit + oldpriorbit - gubbins);
+      arc[n] = acceptance;
+      if(acceptance >= 1){
+        phiVarb[n] = propphiVarb;
+        accept[1]++;
+      } else {
+        if(runif(1)[0] <= acceptance) {
+          phiVarb[n] = propphiVarb;
+          accept[1]++;
+        }
+      }
+    }
+  }
+  List out(3);
+  out[0] = accept;
+  out[1] = phiVarb;
+  out[2] = arc;
+  return out;
+}
+
+
+
+// [[Rcpp::export]]
+List updatetripList(List trips, NumericVector vold, 
+                    NumericVector vnew, const int nedges){    
+   //   create a clone of the triplet matrix                   
+   List temporary = clone(trips);    
+   //   seperate into the diagonal elements and off diagonal elements
+   NumericMatrix outdiagtrip = temporary[0];
+   NumericMatrix outoffdiagtrip = temporary[1];
+   //   stuff needed for intermediate calculations
+   double oldoffdiag_binary, newoffdiag_binary;
+   double newoffdiag_logit,  oldoffdiag_logit;
+   int    diag_inds_1,       diag_inds_2;
+   double olddiag_binary_1,  olddiag_binary_2;
+   //   loop over all edges, stop only at elements where vold and vnew differ
+   //   then perform and update of the corresponding triplets
+   for(int i = 0; i < nedges; i++) {  
+     if( !(vold[i] == vnew[i]) ){
+       //       this is the old off diagonal element (-ve to make +ve)
+       oldoffdiag_binary = -outoffdiagtrip(i, 2);
+       //       old and new v elements
+       oldoffdiag_logit  = vold[i];
+       newoffdiag_logit  = vnew[i];
+       //       convert new v onto [0,1] scale
+       newoffdiag_binary = -(1/(1 + exp(-newoffdiag_logit)));
+       //       replace triplets with new v
+       outoffdiagtrip(i, 2) = newoffdiag_binary;
+       outoffdiagtrip(i + nedges, 2) = newoffdiag_binary;
+       //       now need to find x and y coords of these offdiags to update diags
+       diag_inds_1 = outoffdiagtrip(i, 0) - 1;
+       diag_inds_2 = outoffdiagtrip(i, 1) - 1;
+       //       get the old binary elements
+       olddiag_binary_1 = outdiagtrip(diag_inds_1, 2);
+       olddiag_binary_2 = outdiagtrip(diag_inds_2, 2);
+       //       calculate and replace with new ones
+       outdiagtrip(diag_inds_1, 2) = (olddiag_binary_1 - oldoffdiag_binary)  - newoffdiag_binary;
+       outdiagtrip(diag_inds_2, 2) = (olddiag_binary_2 - oldoffdiag_binary)  - newoffdiag_binary; 
      }
-
-// Return the results
-List out(2);
-out[0] = Xnew;
-out[1] = accept;
-return out;
+   }
+   //   output to a list where the first element is the updated diagonal triplets
+   //   second element is the offdiagonal triplets
+   List out(2);
+   out[0] = outdiagtrip;
+   out[1] = outoffdiagtrip;
+   return out;
 }
 
