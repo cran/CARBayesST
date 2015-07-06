@@ -1,0 +1,299 @@
+%\documentclass{article}
+\documentclass[article,shortnames,nojss]{jss}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{verbatim}
+\usepackage{hyperref}
+\usepackage{url}
+%\usepackage{ae}
+
+
+
+\setlength{\unitlength}{1cm}
+\newcommand{\ex}[1]{\ensuremath{\mathbb{E}[#1]}}
+\newcommand{\var}[1]{\ensuremath{\mathrm{Var}[#1]}}
+\newcommand{\cov}[1]{\ensuremath{\mathrm{Cov}[#1]}}
+\newcommand{\corr}[1]{\ensuremath{\mathrm{Corr}[#1]}}
+\newcommand{\bd}[1]{\ensuremath{\mbox{\boldmath $#1$}}}
+
+%\VignetteIndexEntry{Vignette for \textbf{CARBayes}  package.}
+
+
+%% almost as usual
+\author{Duncan Lee\\University of Glasgow \And Alastair Rushworth\\University of Strathclyde}
+\title{\pkg{CARBayesST}: An \proglang{R} Package for Spatio-temporal Areal Unit Modelling  with Conditional Autoregressive Priors}
+
+%% for pretty printing and a nice hypersummary also set:
+\Plainauthor{Duncan Lee, Alastair Rushworth} %% comma-separated
+\Plaintitle{CARBayesST: An R package for Spatio-temporal areal unit modelling  with conditional autoregressive priors} %% without formatting
+\Shorttitle{\pkg{CARBayesST}: Bayesian Conditional Autoregressive modelling} %% a short title (if necessary)
+
+%% an abstract and keywords
+\Abstract{
+This is a vignette for the \proglang{R} package \pkg{CARBayesST} version 2, which describes the class of models that can be implemented by the package.
+}
+\Keywords{Bayesian inference, conditional autoregressive priors, \proglang{R} package \pkg{CARBayesST}}
+\Plainkeywords{Bayesian inference, conditional autoregressive priors, R package CARBayesST}
+
+\Address{
+  Duncan Lee\\
+  School of Mathematics and Statistics\\ 
+  15 University Gardens\\  
+  University of Glasgow\\
+  Glasgow\\ 
+  G12 8QQ, Scotland\\
+  E-mail: \email{Duncan.Lee@glasgow.ac.uk}\\
+  URL: \url{http://www.gla.ac.uk/schools/mathematicsstatistics/staff/duncanlee/}\\
+  \\
+  Alastair Rushworth\\
+  Mathematics and Statistics\\ 
+  26 Richmond Street\\
+  University of Strathclyde\\
+  Glasgow\\
+  G1 1XH, Scotland\\
+  E-mail: \email{alastair.rushworth@strath.ac.uk}\\
+  %URL: \url{https://pure.strath.ac.uk/portal/en/persons/alastair-rushworth(bfcc6fcd-1dff-43de-b124-992e863a1bf0)/contact.html}
+}
+%% The address of (at least) one author should be given
+%% in the following format:
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+
+%%%%%%%%%%%%%%
+%%%% Section 1
+%%%%%%%%%%%%%%
+\section{Introduction}
+Areal unit data are a type of spatial data where the observations relate to a set of $K$ contiguous but non-overlapping areal units, such as electoral wards or census tracts. Each observation relates to an entire areal unit, and thus is typically a summary measure such as an average, proportion or total of the quantity being measured throughout the unit. This type of data can be total yields in sectors in an agricultural field trial (\citealp{besag1999}), the proportion of people who are Catholic in lower super output areas in Northern Ireland (\citealp{lee2015}), the average score on SAT college entrance exams across US states (\citealp{wall2004}), or the total number of cases of chronic obstructive pulmonary disease from populations living in counties in Georgia, USA (\citealp{choiENV11}). Such data have become increasingly available in recent times, due to the creation of databases such as Scottish Neighbourhood Statistics (\emph{http://www.sns.gov.uk}), Health and Social Care Information Centre Indicator Portal (\emph{http://www.hscic.gov.uk/indicatorportal}), and Surveillance Epidemiology and End Results programme (\emph{http://seer.cancer.gov}). These databases provide data on a set of $K$ areal units for $T$ consecutive time periods, yielding a rectangular array of $K\times T$ spatio-temporal observations. The motivations for modelling these data are varied, and include estimating the effect of a risk factor on a response (see \citealp{wakefield2007} and \citealp{lee2009}), identifying clusters of contiguous areal units that exhibit an elevated risk of disease compared with neighbouring areas (see \citealp{charras2012} and \citealp{anderson2014}), and quantifying the level of segregation in a city between two or more different groups (see \citealp{lee2015}).\\
+
+The key statistical modelling challenge for these data is that of spatio-temporal autocorrelation, namely that observations from geographically close areal units and time periods tend to have more similar values than units and time periods that are further apart. Temporal autocorrelation occurs because the data relate to the same set of individuals over consecutive time periods, while the spatial autocorrelation can arise for a number of reasons. The first is unmeasured confounding, which occurs when a spatially patterned risk factor for the response data being measured is not included in a regression  model and hence its omission induces unmeasured spatial structure into the response. Other causes of spatial autocorrelation include neighbourhood effects, where the behaviours of individuals in an areal unit  are influenced by individuals in adjacent units, and grouping effects where groups of people with similar behaviours choose to live together.  A number of models have been developed to allow for such spatio-temporal autocorrelation, the majority of which utilise a set of autocorrelated random effects. Autoregressive (AR) priors are commonly used to represent temporal autocorrelation in the random effects, while conditional autoregressive (CAR) priors (\citealp{besag1991}) are most often utilised for modelling spatial autocorrelation. Both these models are special cases of a Gaussian Markov Random Field (GMRF), and are typically implemented in a Bayesian setting using either Markov chain Monte Carlo (McMC) simulation or Integrated Nested Laplace Approximations (INLA).\\
+
+An array of freely available software can now implement purely spatial areal unit models, ranging from general purpose statistical modelling software such as \proglang{BUGS} (\citealp{lunn2009}) and \pkg{R-INLA} (\citealp{rue2009}), to specialist spatial modelling packages in the statistical software \proglang{R} (\citealp{R})  such as \pkg{CARBayes}, \pkg{spatcounts} and \pkg{spdep}. However, due to the flexibility of general purpose software, implementing spatial models, in say \proglang{BUGS}, requires a degree of programming that is non-trivial for applied researchers. Specialist software for spatio-temporal modelling is much less well developed, with examples for geostatistical data including \pkg{spTimer} and \pkg{spBayes}. For areal unit data the \pkg{surveillance} package models epidemic data, the \pkg{plm} and \pkg{splm} packages model panel data, while the \pkg{nlme} and \pkg{lme4} packages have functionality to model spatial and temporal random effects structures. However, software to fit a range of spatio-temporal areal unit models with CAR type autocorrelation structures is not avaiable, which has  motivated us to develop the \proglang{R} package \pkg{CARBayesST}.\\
+
+The software can fit a number of different spatio-temporal models, which allow the user to answer different questions about their data. These models include a spatially varying linear time trends model similar to \cite{bernardinelli1995}, a spatial and temporal main effects and an interaction model similar to that proposed by \cite{knorrheld2000}, and the spatially autocorrelated autoregressive time series model of \cite{rushworth2014}. The software can also fit more complex spatio-temporal structures, including the adaptive smoothing model of \cite{rushworth2014b} and a localised smoothing model which is a spatio-temporal extension of \cite{lee2015b}. The software has the same syntax as the \proglang{R} package \pkg{CARBayes} (\citealp{lee2013}) for spatial areal unit modelling, and retains all of its easy-to-use features such as specifying the spatial adjacency information via a single matrix (unlike \proglang{BUGS} that requires 3 separate list objects), fitting models via a one-line function call, and compatibility with \pkg{CARBayes} which allows it to share the latter's model summary functionality for interpreting the results. All models available in this software can be fitted to binomial, Gaussian or Poisson data, and Section 2 in this vignette summarises the models that can be fitted. Finally, in Section 3 the software and functionality are discussed.
+
+
+
+%%%%%%%%%%%%%%
+%%%% Section 2
+%%%%%%%%%%%%%%
+\section{Spatio-temporal models for areal unit data}
+This section outlines the class of Bayesian hierarchial models that \pkg{CARBayesST} can fit, and in all cases inference is based on McMC simulation.
+
+
+\subsection{Data structure and likelihood}
+The study region comprises a set of $k=1,\ldots,K$ non-overlapping areal units $\mathcal{S}=\{\mathcal{S}_{1},\ldots,\mathcal{S}_{K}\}$, and data are recorded for each unit for $t=1,\ldots,T$ consecutive time periods. Thus data are available for a $K\times T$ rectangular array with $K$ rows (spatial units) and $T$ columns (time periods). The response data are denoted by $\mathbf{Y}=(\mathbf{Y}_{1},\ldots,\mathbf{Y}_{T})$, where $\mathbf{Y}_{t}=(Y_{1t},\ldots,Y_{Kt})$ denotes the vector of observations for all $K$ spatial units for time period $t$. Also available are a vector of known offsets $\mathbf{O}=(\mathbf{O}_{1},\ldots,\mathbf{O}_{T})$, where $\mathbf{O}_{t}=(O_{1t},\ldots,O_{Kt})$ denotes the vector of offsets for time period $t$. Finally, 
+$\mathbf{x}_{kt}=(x_{kt1},\ldots, x_{ktp})$ is a vector of $p$ known covariates for areal unit $k$ and time period $t$, and can include factors or continuous variables and a column of ones for the intercept term. \pkg{CARBayesST} models these data with a generalised linear mixed model, whose general form is:
+
+\begin{eqnarray}
+Y_{kt}|\mu_{kt}&\sim&f(y_{kt}|\mu_{kt},\nu^{2})~~~~\mbox{for }k=1,\ldots,K,~~t=1,\ldots,T,\label{equation likelihood}\\
+g(\mu_{kt})&=&\mathbf{x}_{kt}^{\mbox{T}}\bd{\beta} + O_{k} + M_{kt},\nonumber\\
+\bd{\beta}&\sim&\mbox{N}(\bd{\mu}_{\beta}, \Sigma_{\beta}).\nonumber
+\end{eqnarray}
+
+The vector of regression parameters are denoted by $\bd{\beta}=(\beta_{1},\ldots,\beta_{p})$, and non-linear covariate effects can be incorporated into the above model by including natural cubic spline or polynomial basis functions into the design matrix. A multivariate Gaussian prior is assumed for $\bd{\beta}$, and the mean $\bd{\mu}_{\beta}$ and diagonal variance matrix $\Sigma_{\beta}$ can be chosen by the user. The $M_{kt}$ term is a latent component for areal unit $k$ and time period $t$ that captures spatio-temporal autocorrelation in these data,  and \pkg{CARBayesST} can fit a number of different models for $M_{kt}$. The package can fit 3 special cases of the above model, for binomial, Gaussian and Poisson data, and their exact specifications are given below:
+
+\begin{itemize}
+\item \textbf{Binomial - } $Y_{kt}~\sim~\mbox{Binomial}(n_{kt}, \theta_{kt})$ and $\log(\theta_{kt}/(1-\theta_{kt}))~=~\mathbf{x}_{kt}^{\mbox{T}}\bd{\beta} + O_{k} + M_{kt}$. 
+
+\item \textbf{Gaussian - } $Y_{kt}~\sim~\mbox{N}(\mu_{kt}, \nu^{2})$ and $\mu_{kt}~=~\mathbf{x}_{kt}^{\mbox{T}}\bd{\beta} + O_{k} + M_{kt}$. 
+
+\item \textbf{Poisson - } $Y_{kt}~\sim~\mbox{Poisson}(\mu_{kt})$ and $\log(\mu_{kt})~=~\mathbf{x}_{kt}^{\mbox{T}}\bd{\beta} + O_{k} + M_{kt}$. 
+\end{itemize}
+
+
+
+
+
+\subsection{Spatio-temporal models for $M_{kt}$}
+All the models in the package induce spatial autocorrelation into the response data $\mathbf{Y}$ via the latent component $M_{kt}$, which is achieved by a $K\times K$ neighbourhood matrix $\mathbf{W}=(w_{kj})$. Typically, $\mathbf{W}$ contains binary elements, where $w_{kj}=1$ if areal units $(\mathcal{S}_k, \mathcal{S}_j)$ share a common border (i.e. are spatially close) and is zero otherwise. Additionally, $w_{kk}=0$. This means that for spatially adjacent areal units $(\mathcal{S}_k, \mathcal{S}_j)$  $(M_{kt}, M_{jt})$ are spatially autocorrelated, where as values for non-neighbouring areal units are conditionally independent given the remaining $\{M_{it}\}$ values. This binary specification of $\mathbf{W}$ based on sharing a common border is the most commonly used for areal data, but the only requirement by \pkg{CARBayesST} is for $\mathbf{W}$ to be symmetric and contain non-negative elements. Similarly the model \code{ST.CARanova()} uses a binary $T\times T$ temporal neighbourhood matrix $\mathbf{D}=(d_{tj})$, where $d_{tj}=1$ if $j=t-1, t+1$ and $d_{tj}=0$ otherwise. \pkg{CARBayesST} can fit the following models:
+
+\begin{itemize}
+\item \code{ST.CARlinear()} - fits a model similar to the spatially varying linear time trends model proposed by \cite{bernardinelli1995}.
+
+\item \code{ST.CARanova()} - fits a model similar to the spatial and temporal main effects and space-time interaction  model proposed by \cite{knorrheld2000}.
+
+\item \code{ST.CARar()} - fits the spatially autocorrelated autoregressive time series model of \cite{rushworth2014}.
+
+\item \code{ST.CARadaptive()} - fits the localised smoothing model of \cite{rushworth2014b} that is an extension of \cite{rushworth2014}.
+
+\item \code{ST.CARlocalised()} - fits the localised smoothing and clustering model that is an extension of \cite{rushworth2014} and \cite{lee2015b}. Note, this model can only be applied to binomial or Poisson data.
+\end{itemize}
+
+
+Full details of each model are given below.\vspace{1cm}
+
+\code{ST.CARlinear()}\\
+The model is a modification of that proposed by \cite{bernardinelli1995} and is given by
+
+\begin{eqnarray}
+M_{kt}&=&\beta_{1} + \phi_k + (\alpha + \delta_k)\frac{(t - \bar{t})}{T},\label{carlinear}\\
+\phi_k|\bd{\phi}_{-k},\mathbf{W}&\sim&\mbox{N}\left(\frac{\rho_{\phi}\sum_{j=1}^Kw_{kj}\phi_j}{\rho_{\phi}\sum_{j=1}^Kw_{kj} + 1-\rho_{\phi}}, \frac{\tau^2_{\phi}}{\rho_{\phi}\sum_{j=1}^Kw_{kj} + 1-\rho_{\phi}}\right),\nonumber\\
+\delta_k|\bd{\delta}_{-k},\mathbf{W}&\sim&\mbox{N}\left(\frac{\rho_{\delta}\sum_{j=1}^Kw_{kj}\delta_j}{\rho_{\delta}\sum_{j=1}^Kw_{kj} + 1-\rho_{\delta}}, \frac{\tau^2_{\delta}}{\rho_{\delta}\sum_{j=1}^Kw_{kj} + 1-\rho_{\delta}}\right),\nonumber\\
+\tau^2_{\phi}, \tau^2_{\delta}&\sim&\mbox{Inverse-Gamma}(a,b),\nonumber\\
+\rho_{\phi},\rho_{\delta}&\sim&\mbox{Uniform}(0,1),\nonumber\\
+\alpha&\sim&\mbox{N}(\mu_{\alpha}, \sigma^2_{\alpha}),\nonumber
+\end{eqnarray}
+
+where $\bar{t}=(1/T)\sum_{t=1}^T t$ and thus the modified linear temporal trend covariate is $t^{*}=(t - \bar{t})/T$ and runs over a centered unit interval.  Each areal unit $k$ has its own linear time trend, with a spatially varying intercept $\beta_{1}+\phi_{k}$ and a spatilly varying slope $\alpha+\delta_{k}$. Note, the $\beta_1$ term comes from the covariate component $\mathbf{x}_{kt}^{\mbox{T}}\bd{\beta}$ in (\ref{equation likelihood}). Each set of random effects $\bd{\phi}=(\phi_1,\ldots,\phi_K)$ and  $\bd{\delta}=(\delta_1,\ldots,\delta_K)$ are modelled as spatially autocorrelated by the CAR prior proposed by \cite{leroux1999}, and are mean centered. Here $(\rho_{\phi}, \rho_{\delta})$ are spatial dependence parameters, with values of one corresponding to strong spatial smoothness that is equivalent to the intrinsic CAR prior proposed by  \cite{besag1991}, while values of zero correspond to independence. Flat uniform priors on the unit interval are specified for the spatial dependence parameters $(\rho_{\phi}, \rho_{\delta})$, while conjugate inverse-gamma and Gaussian priors are specified for the random effects variances $(\tau^2_{\phi}, \tau^2_{\delta})$ and the overall slope parameter $\alpha$ respectively. The corresponding hyperparameters $(a, b, \mu_{\alpha}, \sigma^2_{\alpha})$ can be chosen by the user, and default values are $(a=0.001, b=0.001, \mu_{\alpha}=0, \sigma^2_{\alpha}=1000)$.\vspace{1cm}
+
+\code{ST.CARanova()}\\
+The model is a  modification of that proposed by \cite{knorrheld2000}, and is given by
+
+\begin{eqnarray}
+M_{kt}&=&\phi_k +  \delta_t   + \gamma_{kt},\label{caranova}\nonumber\\
+\phi_k|\bd{\phi}_{-k},\mathbf{W}&\sim&\mbox{N}\left(\frac{\rho_{\phi}\sum_{j=1}^Kw_{kj}\phi_j}{\rho_{\phi}\sum_{j=1}^Kw_{kj} + 1-\rho_{\phi}}, \frac{\tau^2_{\phi}}{\rho_{\phi}\sum_{j=1}^Kw_{kj} + 1-\rho_{\phi}}\right),\nonumber\\
+\delta_t|\bd{\delta}_{-t},\mathbf{D}&\sim&\mbox{N}\left(\frac{\rho_{\delta}\sum_{j=1}^T d_{tj}\delta_j}{\rho_{\delta}\sum_{j=1}^T d_{tj} + 1-\rho_{\delta}}, \frac{\tau^2_{\delta}}{\rho_{\delta}\sum_{j=1}^T d_{tj}+1-\rho_{\delta}}\right),\nonumber\\
+\gamma_{kt}&\sim&\mbox{N}(0, \tau^2_{\gamma} ),\nonumber\\
+\tau^2_{\phi}, \tau^2_{\delta}, \tau^2_{\gamma}&\sim&\mbox{Inverse-Gamma}(a,b),\nonumber\\
+\rho_{\phi},\rho_{\delta}&\sim&\mbox{Uniform}(0,1).\nonumber
+\end{eqnarray}
+
+
+Here the spatio-temporal autocorrelation is modelled by a common set of spatial random effects $\bd{\phi}=(\phi_1,\ldots,\phi_K)$ and a common set of temporal random effects  $\bd{\delta}=(\delta_1,\ldots,\delta_T)$, and both are modelled by the CAR prior proposed by \cite{leroux1999}. Additionally, the model can incorporate an optional set of independent space-time interactions $\bd{\gamma}=(\gamma_{11},\ldots,\gamma_{KT})$, which can be specified by the argument \code{interaction=TRUE} (the default) in the function call. All sets of random effects are mean centered. Fixed uniform $(\rho_{\phi},\rho_{\delta})$  or flexible  conjugate $(\tau^2_{\phi}, \tau^2_{\delta}, \tau^2_{\gamma})$ priors are specified for the remaining paramters, and the default specifications for the latter are $(a=0.001, b=0.001)$.\vspace{1cm}
+
+\code{ST.CARar()}\\
+The model is that proposed by \cite{rushworth2014}, and is given by
+
+\begin{eqnarray}
+M_{kt}&=&\phi_{kt},\label{carar}\\
+\bd{\phi}_t|\bd{\phi}_{t-1} & \sim & \mbox{N}\left(\gamma\bd{\phi}_{t-1}, \tau^{2} \mathbf{Q}(\mathbf{W},\rho)^{-1}\right)\hspace{1cm} t=2,\ldots,T,\nonumber\\
+\bd{\phi}_1 & \sim & \mbox{N}\left(\mathbf{0}, \tau^{2} \mathbf{Q}(\mathbf{W},\rho)^{-1}\right),\nonumber\\
+\tau^2&\sim&\mbox{Inverse-Gamma}(a,b),\nonumber\\
+\rho,\gamma&\sim&\mbox{Uniform}(0,1).\nonumber
+\end{eqnarray}
+
+In this model $\bd{\phi}_{t}=(\phi_{1t},\ldots,\phi_{Kt})$ is the vector of random effects for time period $t$, which  evolve over time via a multivariate first order autoregressive process with temporal autoregressive parameter $\gamma$. The temporal autocorrelation is thus induced via the mean $\gamma\bd{\phi}_{t-1}$, while spatial autocorrelation is induced by the varince $\tau^{2} \mathbf{Q}(\mathbf{W},\rho)^{-1}$. This precision matrix corresponds to the CAR prior proposed by \cite{leroux1999} and is given by 
+
+$$\mathbf{Q}(\mathbf{W},\rho)=\rho[\mbox{diag}(\mathbf{W}\mathbf{1}) - \mathbf{W}] + (1-\rho)\mathbf{I},$$
+
+where $\mathbf{1}$ is the $K\times 1$ vector of ones while $\mathbf{I}$ is the $K\times K$ identity matrix. As with all other models the random effects are zero mean centered, while flat and conjugate priors are specified for $(\rho, \gamma, \tau^2)$ respectively with $(a=0.001, b=0.001)$ being the default values.\vspace{1cm}
+
+
+\code{ST.CARadaptive()}\\
+The model is that proposed by \cite{rushworth2014b}, and is an extension of \code{ST.CARar()} proposed by \cite{rushworth2014}. It has the same autoregressive random effects structure as \code{ST.CARar()}, namely:
+
+\begin{eqnarray}
+M_{kt}&=&\phi_{kt},\label{caradaptive1}\\
+\bd{\phi}_t|\bd{\phi}_{t-1} & \sim & \mbox{N}\left(\gamma\bd{\phi}_{t-1}, \tau^{2} \mathbf{Q}(\mathbf{W},\rho)^{-1}\right)\hspace{1cm} t=2,\ldots,T,\nonumber\\
+\bd{\phi}_1 & \sim & \mbox{N}\left(\mathbf{0}, \tau^{2} \mathbf{Q}(\mathbf{W},\rho)^{-1}\right),\nonumber\\
+\tau^2&\sim&\mbox{Inverse-Gamma}(a,b),\nonumber\\
+\rho,\gamma&\sim&\mbox{Uniform}(0,1).\nonumber
+\end{eqnarray}
+
+
+However, this random effects structure assumes there is a single level of spatial dependence in the data, which is controlled by $\rho$. Thus all pairs of adjacent areal units will have strongly autocorrelated random effets if $\rho$ is close to one, while no such spatial dependence will exist anywhere if $\rho$ is close to zero. However, real data may exhibit spatially varying dependences, as two adjacent areal units may exhibit similar values suggesting a value of $\rho$ close to one, while another pair may exhibit different values suggesting a value of $\rho$ close to zero.\\
+
+We allow for localised residual spatial autocorrelation by allowing spatially neighbouring  random effects to be correlated (inducing smoothness) or conditionally independent (no smoothing), which is  achieved by modelling the non-zero elements of the neighbourhood matrix $\mathbf{W}$  as unknown parameters rather than fixed constants equal to one. These adjacency parameters are collectively denoted by $\mathbf{w}^{+}=\{w_{kj}|k\sim j\}$, where $k\sim j$ means areas $(k,j)$ share a common border. Estimating $w_{kj}\in\mathbf{w}^{+}$ as equal to zero means $(\phi_{kt}, \phi_{jt})$  are conditionally independent for all $t$  given the remaining random effects, while estimating it close to one means they are correlated. The adjacency parameters in $\mathbf{w}^{+}$ are each modelled on the unit interval, by assuming a multivariate Gaussian prior distribution on the transformation $\mathbf{v}^+ = \log\left(\mathbf{w}^{+}/(\mathbf{1} - \mathbf{w}^{+}) \right)$.  This prior is a shrinkage model with a constant mean $\mu$ and a diagonal variance matrix with variance parameter $\zeta^2$, and is given by
+
+
+\begin{eqnarray}
+f(\mathbf{v}^{+}|\zeta^2, \mu) & \propto & \exp\left[-\frac{1}{2\zeta^2}\left(\sum_{v_{ik}\in\mathbf{v}^{+}}(v_{ik} - \mu)^2\right)\right], \label{caradaptive2}\\
+\zeta^{2}&\sim&\mbox{Inverse-Gamma}(a, b).\nonumber
+\end{eqnarray}
+
+The prior distribution for $\mathbf{v}^+$ assumes that the degree of smoothing between pairs of adjacent random effects is not spatially dependent, which results from the  work of \cite{rushworth2014b} that shows poor estimation performance when $\mathbf{v}^+$ (and hence $\mathbf{w}^+$) is assumed to be spatially autocorrelated. Under small values of $\zeta^2$ the elements of  $\mathbf{v}^+$ are shrunk to $\mu$, and here we follow the work of \cite{rushworth2014b} and fix $\mu=15$ because it avoids numerical issues when transforming between $\mathbf{v}^+$ and $\mathbf{w}^+$ and implies a prior preference for values of $w_{kj}$ close to 1.  That is as $\zeta^2 \rightarrow 0$ the prior becomes a global smoothing model \code{ST.CARar()}. As with the other models the default values for the inverse-gamma prior for $\zeta^{2}$ are $(a=0.001, b=0.001)$. For further details see \cite{rushworth2014b}.\vspace{1cm}
+
+
+\code{ST.CARlocalised()}\\
+The model extends \code{ST.CARar()} proposed by \cite{rushworth2014} and the localised smoothing and clustering model of \cite{lee2015b}. In common with \code{ST.CARadaptive()} this model allows for localised spatio-temporal autocorrelation, in that some pairs of observations from spatially or temporal adjacent areal units will have similar values (correlation) while others will have large differences between their values (step-changes, no correlation). This model captures these step-changes via the mean function, where as \code{ST.CARadaptive()} captured then via the correlation structure (via $\mathbf{W}$). Model \code{ST.CARlocalised()} is given by
+
+\begin{eqnarray}
+M_{kt}&=&\lambda_{Z_{kt}} + \phi_{kt},\label{carcluster1}\\
+\bd{\phi}_t|\bd{\phi}_{t-1} & \sim & \mbox{N}\left(\gamma\bd{\phi}_{t-1}, \tau^{2} \mathbf{Q}(\mathbf{W},\rho)^{-1}\right)\hspace{1cm} t=2,\ldots,T,\nonumber\\
+\bd{\phi}_1 & \sim & \mbox{N}\left(\mathbf{0}, \tau^{2} \mathbf{Q}(\mathbf{W},\rho)^{-1}\right),\nonumber\\
+\tau^2&\sim&\mbox{Inverse-Gamma}(a,b),\nonumber\\
+\rho,\gamma&\sim&\mbox{Uniform}(0,1),\nonumber
+\end{eqnarray}
+
+where the random effects $\bd{\phi}=(\bd{\phi}_{1},\ldots,\bd{\phi}_{T})$ are as specified in \code{ST.CARar()} and capture spatio-temporal autocorrelation in the data. The other component in the model is a piecewise constant clustering or intercept component $\lambda_{Z_{kt}}$. Thus spatially and  temporally adjacent data points $(Y_{kt}, Y_{js})$ will be similar (autocorrelated) if they are in the same cluster or intercept, that is if $\lambda_{Z_{kt}}=\lambda_{Z_{js}}$, but exhibit a step-change if they are estimated to be in different clusters, that is if $\lambda_{Z_{kt}}\neq\lambda_{Z_{js}}$. The piecewise constant intercept or clustering component  comprises at most $G$ distinct levels, making this component a piecewise constant intercept term. The $G$ levels are ordered via the prior specification:
+
+\begin{eqnarray}
+\lambda_{j}&\sim&\mbox{Uniform}(\lambda_{j-1},\lambda_{j+1})~~~~\mbox{for }j=1,\dots,G,\label{carcluster2}
+\end{eqnarray}
+
+where $\lambda_{0}=-\infty$ and  $\lambda_{G+1}=\infty$. Here $Z_{kt}\in\{1,\ldots,G\}$ and controls the assignment of the $(k,t)$th data point to one of the $G$ intercept levels. A penalty based approach is used to model $Z_{kt}$, where $G$ is chosen larger than necessary and a penalty prior is used  to shrink it to the middle intercept level.  This middle level is $G^{*}=(G+1)/2$ if $G$ is odd and $G^{*}=G/2$ if $G$ is even, and this penalty ensures that $Z_{kt}$ is only in risk class $1$ or $G$ if supported by the data. The allocation prior is independent across areal units but correlated in time, and is given by:
+
+
+\begin{eqnarray}
+f(Z_{kt}|Z_{k,t-1})&=&\frac{\exp(-\delta[(Z_{kt}-Z_{k,t-1})^{2} +(Z_{kt}-G^{*})^{2}])}{\sum_{r=1}^{G}\exp(-\delta[(r-Z_{k,t-1})^{2}+(r-G^{*})^{2}])}~~~~\mbox{for } t=2,\ldots,T,\nonumber\\
+f(Z_{k1})&=&\frac{\exp(-\delta(Z_{k1}-G^{*})^{2})}{\sum_{r=1}^{G}\exp(-\delta(r-G^{*})^{2})},\nonumber\\
+\delta&\sim&\mbox{Uniform}(1,M=100).\label{carcluster3}
+\end{eqnarray}
+
+Temporal autocorrelation is induced by the $(Z_{kt}-Z_{k,t-1})^{2}$ component of the penalty, while the $(Z_{kt}-G^{*})^{2}$ component penalises class indicators $Z_{kt}$ towards the middle risk class $G^{*}$. The size of this penalty and hence the amount of smoothing that is imparted on $\mathbf{Z}$ is controlled by $\delta$, which is assigned a uniform prior on a large range.
+
+
+
+
+
+%%%%%%%%%%%%%%
+%%%% Section 3
+%%%%%%%%%%%%%%
+\section{Obtaining and using the software}
+
+\subsection{Obtaining the software}
+\pkg{CARBayesST} is a package for the \proglang{R} statistical software, and can be downloaded from CRAN (\emph{http://cran.r-project.org/}) for Windows, Linux and Apple platforms.  The package requires \proglang{R} ($\geq$ 3.0.0) and depends on packages \pkg{MASS}, and \pkg{Rcpp} ($\geq$ 0.11.5). It also imports functionality from the \pkg{coda}, \pkg{spam} and \pkg{truncdist} packages. Once installed it can be loaded using the command
+
+<<>>=
+library(CARBayesST)
+@
+
+The packages listed above are automatically loaded by the above call, but a complete spatial analysis beginning with reading in and formatting shapefiles and data, creating the neighbourhood matrix $\mathbf{W}$, and plotting the results requires a number of other packages. Thus you may also find the following packages useful: \pkg{CARBayes}, \pkg{maptools},\pkg{shapefiles}, \pkg{sp}, \pkg{spdep}.
+
+
+\subsection{Using the software}
+The software can fit  five main models: \code{ST.CARlinear()}, \code{ST.CARanova()}, \code{ST.CARar()} , \code{ST.CARadaptive()} \code{ST.CARlocalised()}, and full details of the arguments required for each function are given in the helpfiles. However, the main arguments needed are as follows.
+
+\begin{itemize}
+\item \code{formula} - A formula for the covariate part of the model using the syntax of the \code{lm()} function. Offsets can be included here using the \code{offset()} function. The response and each covariate should be vectors of length $KT\times 1$, where each vector is ordered so that the first $K$ data points are the set of all $K$ spatial locations at time 1, the next $K$ are the set of spatial points for time 2 and so on.
+
+\item \code{family} - The likelihood model which must  be one of \code{`binomial'}, \code{`Gaussian'} or \code{`Poisson'}.
+
+\item \code{trials} - A vector the same length as the response containing the total number of trials  for each area and time period. Only used if \code{family=`binomial'}. 
+
+\item \code{W} - A $K \times K$ neighbourhood matrix, which must be symmetric and non-negative. Typically a binary specification is used, where the $kj$th element equals one if areas $(\mathcal{S}_j, \mathcal{S}_k)$ are spatially close (e.g. share a common border) and is zero otherwise. This matrix can be created from a shapefile and data frame using the functionality from the \pkg{CARBayes} and \pkg{spdep} packages, see \cite{lee2013} for details.
+
+\item \code{burnin} - The number of McMC samples to discard as the burnin period.
+    
+\item \code{n.sample} - The number of McMC samples to generate.
+\end{itemize}
+
+When a model has run (see the helpfiles for how to run a model), \pkg{CARBayesST} has a \code{print()} function that will print a model summary to the screen. The \pkg{CARBayes} function \code{summarise.samples} can also be applied to the models in \pkg{CARBayesST} to summarise the results. Each model in this package returns a list object with the following components. 
+
+
+\begin{itemize}
+\item \code{summary.results} - A summary table of selected parameters that is presented in the print function. This table includes the posterior median (\code{Median}) and 95$\%$ uncertainty interval (\code{2.5\%, 97.5\%}), the number of samples generated (\code{n.sample}), the acceptance rate for the Markov chain (\code{\% accept}), the effective number of independent samples using the function \code{effectiveSize()} from the \pkg{coda} package (\code{n.effective}), and the convergence Z-score diagnostic (convergence is suggested by the statistic being within the range (-1.96, 1.96)) proposed by \cite{geweke1992} and implemented in the \pkg{coda} package (\code{Geweke.diag}).
+
+\item \code{samples} - A list containing the McMC samples from the model. Each element in the list is a matrix, where each column is the set of samples for a single parameter. The names of the elements in the list correspond to the parameter names in this vignette. For \code{ST.CARlinear} the (\code{tau2, rho}) elements of the list have columns ordered as $(\tau^2_{\phi}, \tau^2_{\delta})$ and $(\rho^2_{\phi}, \rho^2_{\delta})$ respectively. For  \code{ST.CARanova} the (\code{tau2, rho}) elements of the list have columns ordered as $(\tau^2_{\phi}, \tau^2_{\delta}, \tau^2_{\gamma})$ (the latter only if \code{interaction=TRUE}) and $(\rho^2_{\phi}, \rho^2_{\delta})$ respectively. Finally, each model returns samples from the posterior distribution of the fitted values for each data point (\code{fitted}).
+
+\item \code{fitted.values} - A vector of fitted values for each area and time period in the same order as the data $\mathbf{Y}$.
+
+\item \code{residuals} - A vector of residuals for each area and time period in the same order as the data $\mathbf{Y}$.
+
+\item \code{modelfit} - Model fit criteria including the Deviance Information Criterion (DIC, \cite{spiegelhalter2002}), the effective number of parameters in the model (p.d), and the Log Marginal Predictive Likelihood (LMPL, \cite{congdon2005}).
+
+\item \code{accept }{The acceptance probabilities for the parameters.}
+
+\item \code{localised.structure} - This element is \code{NULL} except for the models \code{ST.CARadaptive()} and \code{ST.CARlocalised()}. For \code{ST.CARadaptive()} this element is a list with 2 $K \times K$ matrices, \code{Wmn} and \code{W99} summarising the estimated adjacency relationships. \code{Wmn} contains the posterior median for each $w_{kj}$ element estimated in the model for adjacent areal units, while \code{W99} contains $\mathbb{P}(w_{jk} < 0.5|\mathbf{Y})$. For both matrices, elements corresponding to non-adjacent pairs of areas have \code{NA} values. For \code{ST.CARlocalised()} this element is a vector of length $KT$, and gives the posterior median class ($Z_{kt}$ value) that each data point is assigned to. This vector is in the same order as the data $\mathbf{Y}$.
+        
+\item \code{formula} - The formula (as a text string) for the covariate and offset part of the model.
+
+\item \code{model}- A text string describing the model that has been fitted.
+
+\item \code{X} - The design matrix of covariates inherited from the \code{formula} argument.
+\end{itemize}
+
+
+This vignette is for version 2 of \pkg{CARBayesST}, and future version of the software (and hence the vignette) will come out in due course. These future versions will contain a larger suit of spatio-temporal areal unit models, a more comprehensive vignette with fully worked examples, and more functionality for summarising the results. 
+
+
+
+
+
+\bibliography{CARBayesST}
+\end{document}
+
+

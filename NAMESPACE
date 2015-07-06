@@ -1,15 +1,17 @@
 useDynLib(CARBayesST)
 export(
-     ST.KHmain,
-     ST.KHinteraction,
-     ST.cluster,
-     ST.ARCAR,
-     ST.ARCARcluster,
-     ST.ARCARadaptive,
-     results.summarise,
-     print.carbayesST
+     ST.CARlinear,
+     ST.CARar,
+     ST.CARanova,
+     ST.CARadaptive,
+     ST.CARlocalised
 )
+
+S3method(print, carbayesST)
 import(spam)
+import(MASS)
 importFrom(truncdist, rtrunc)
 import(Rcpp)
-importFrom(coda, mcmc)
+import(stats)
+importFrom(coda, mcmc, geweke.diag, effectiveSize)
+importFrom(utils, setTxtProgressBar, txtProgressBar)
