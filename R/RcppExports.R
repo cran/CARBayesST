@@ -117,3 +117,39 @@ Zupdatesqgau <- function(Z, Offset, delta, lambda, nsites, ntime, G, SS, priorof
     .Call('CARBayesST_Zupdatesqgau', PACKAGE = 'CARBayesST', Z, Offset, delta, lambda, nsites, ntime, G, SS, prioroffset, Gstar, nu2)
 }
 
+tau2compute <- function(tau2, temp, tau2_shape, prior_tau2, N) {
+    .Call('CARBayesST_tau2compute', PACKAGE = 'CARBayesST', tau2, temp, tau2_shape, prior_tau2, N)
+}
+
+binomialdeltaupdate <- function(X, nsites, ntime, delta, offset, y, failures, sig2, delta_tune) {
+    .Call('CARBayesST_binomialdeltaupdate', PACKAGE = 'CARBayesST', X, nsites, ntime, delta, offset, y, failures, sig2, delta_tune)
+}
+
+sigquadformcompute <- function(ntime, delta) {
+    .Call('CARBayesST_sigquadformcompute', PACKAGE = 'CARBayesST', ntime, delta)
+}
+
+rhoquadformcompute <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, tau2) {
+    .Call('CARBayesST_rhoquadformcompute', PACKAGE = 'CARBayesST', Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, tau2)
+}
+
+binomialsrecarupdate <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, failuresmat, phi_tune, offset, denoffset, tau2) {
+    .Call('CARBayesST_binomialsrecarupdate', PACKAGE = 'CARBayesST', Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, failuresmat, phi_tune, offset, denoffset, tau2)
+}
+
+poissonsrecarupdate <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, phi_tune, offset, denoffset, tau2) {
+    .Call('CARBayesST_poissonsrecarupdate', PACKAGE = 'CARBayesST', Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, phi_tune, offset, denoffset, tau2)
+}
+
+poissondeltaupdate <- function(X, nsites, ntime, delta, offset, y, sig2, delta_tune) {
+    .Call('CARBayesST_poissondeltaupdate', PACKAGE = 'CARBayesST', X, nsites, ntime, delta, offset, y, sig2, delta_tune)
+}
+
+tauquadformcompute2 <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho) {
+    .Call('CARBayesST_tauquadformcompute2', PACKAGE = 'CARBayesST', Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho)
+}
+
+rcpp_hello_world <- function() {
+    .Call('CARBayesST_rcpp_hello_world', PACKAGE = 'CARBayesST')
+}
+

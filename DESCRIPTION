@@ -2,9 +2,9 @@ Package: CARBayesST
 Type: Package
 Title: Spatio-Temporal Generalised Linear Mixed Models for Areal Unit
         Data
-Version: 2.0
-Date: 2015-07-02
-Author: Duncan Lee and Alastair Rushworth
+Version: 2.1
+Date: 2015-09-04
+Author: Duncan Lee, Alastair Rushworth and Gary Napier
 Maintainer: Duncan Lee <Duncan.Lee@glasgow.ac.uk>
 Description: Implements a class of spatio-temporal generalised linear mixed models for areal unit data, with inference in a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. The response variable can be binomial, Gaussian or Poisson. The spatio-temporal autocorrelation is modelled by  random effects,  which are assigned conditional autoregressive (CAR) prior distributions. A number of different random effects structures are available, and full details are given in the vignette accompanying this package and the references below. The creation of this package was supported by the Engineering and Physical Science Research Council (EPSRC) grant EP/J017442/1 and the Medical Research Council (MRC) grant MR/L022184/1.
 License: GPL (>= 2)
@@ -13,6 +13,6 @@ Imports: spam, truncdist, coda, stats, utils
 LinkingTo: Rcpp
 LazyLoad: yes
 NeedsCompilation: yes
-Packaged: 2015-07-02 06:31:10 UTC; duncanlee
+Packaged: 2015-08-26 06:25:45 UTC; duncanlee
 Repository: CRAN
-Date/Publication: 2015-07-06 18:51:55
+Date/Publication: 2015-08-26 14:14:51

@@ -4,7 +4,8 @@ export(
      ST.CARar,
      ST.CARanova,
      ST.CARadaptive,
-     ST.CARlocalised
+     ST.CARlocalised,
+     ST.CARsepspatial
 )
 
 S3method(print, carbayesST)

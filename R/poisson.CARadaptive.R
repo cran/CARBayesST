@@ -1,4 +1,4 @@
-poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, prior.zeta2 = NULL, verbose = TRUE)
+poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, prior.zeta2 = NULL, verbose = TRUE, rhofix = NULL, epsilon = NULL)
     { 
   #### Check on the verbose option
   if(is.null(verbose))     verbose = TRUE     
@@ -117,8 +117,8 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
   # for the prior ICAR precision for phi.  Associated with these is the triplet form tripList.
   # get the cholesky of Q.space, and its determinant
   # if rho is not fixed, then ridge must be fixed
-  rho                     <- 1
-  fixedridge              <- 10^-7
+  rho                     <- ifelse(!is.null(rhofix), rhofix, 1)
+  fixedridge              <- epsilon
   tripList                <- vector("list", length = 2)
   tripList[[1]]           <- cbind(1:nrow(W_current), 1:nrow(W_current), rowSums(W_current) + fixedridge)
   tripList[[2]]           <- cbind(rbind(locs, locs[,2:1]), -rep(inv_logit(v), 2))
@@ -334,7 +334,11 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
     
 
     # update rho, the spatial leroux parameter
-    proposal.rho           <- rtrunc(n = 1, spec="norm", a=0, b=1, mean = rho, sd = rho.tune) 
+    if(!is.null(rhofix)){
+      proposal.rho <- rhofix
+    } else {
+      proposal.rho           <- rtrunc(n = 1, spec="norm", a=0, b=1, mean = rho, sd = rho.tune) 
+    }
     Q.space.trip.prop      <- updatetriplets_rho(trips = Q.space.trip, nsites = n.sites, rho_old = rho, rho_new = proposal.rho, fixedridge = fixedridge)   
     Q.space.prop@entries   <- Q.space.trip.prop[perm,3]
     Q.space.trip.diff[, 3] <- Q.space.trip[, 3] - Q.space.trip.prop[,3]

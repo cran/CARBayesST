@@ -3,6 +3,7 @@ using namespace Rcpp;
 
 // This file contains the following functions:
 
+// General functions for most models
 // linpredcompute - computing the linear predictor for covariates.
 // quadform - computing quadratic forms phi %*% Q %*% theta.
 // poissoncarupdate - for updating spatial CAR effects based on a poisson likelihood.
@@ -17,6 +18,8 @@ using namespace Rcpp;
 // tauquadformcompute - for computing the sum of quadratic forms for updating tau2 in the ST.CARar model.
 // biomialarcarupdate - for updating spatio-temporal ARCAR effects based on a binomial likelihood.
 // gaussianarcarupdate - for updating spatio-temporal ARCAR effects based on a gaussian likelihood.
+
+// adaptive model functions
 // qform - computing a quadratic form from a triplet phi %*% Q %*% phi.
 // qform_asym - computing a quadratic form from a triplet of the form phi %*% Q %*% theta.
 // qformSPACETIME - computing a quadratic form in space nad time.
@@ -30,9 +33,23 @@ using namespace Rcpp;
 // update_Qtime        - this function updates the temporal precision matrix given an update of alpha, the temporal dependence par
 // updatetriplets_rho  - updates the triplet form of Q.space given an update of the leroux parameter, rho
 // updatetripList2     - updates the triplet form of Q.space given an update of the adjacency parameters, v
+
+// Localised model functions
 // Zupdatesqbin - updates the Z allocation parameters in the binomial cluster model.
 // Zupdatesqpoi - updates the Z allocation parameters in the poisson cluster model.
 // Zupdatesqgau - updates the Z allocation parameters in the gaussian cluster model.
+
+
+// Sepspatial model functions
+// tau2compute - computes the full conditional of tau2 at each time period in the sepspatial model.
+// binomialdeltaupdate - for updating covariate temporal trend delta based on a binomial likelihood in the sepspatial model.
+// sigquadformcompute - for computing the sum of quadratic forms for updating sig2 in the sepspatial model.
+// rhoquadformcompute - for computing the sum of quadratic forms for updating rho in the sepspatial model.
+// biomialsrecarupdate - for updating spatial random effects based on a binomial likelihood in the sepspatial model.
+// poissonsrecarupdate - for updating spatial random effects based on a poisson likelihood in the sepspatial model.
+// poissondeltaupdate - for updating covariate temporal trend delta based on a poisson likelihood in the sepspatial model.
+// tauquadformcompute2 - for computing quadratic forms in the sepspatial model.
+
 
 // [[Rcpp::export]]
 NumericVector linpredcompute(NumericMatrix X, const int nsites, const int p, 
@@ -1745,4 +1762,420 @@ int ntimeminus2 = ntime -2;
 
 
 return Z;
+}
+
+
+
+
+// [[Rcpp::export]]
+NumericVector tau2compute(NumericVector tau2, NumericVector temp, const double tau2_shape, const double prior_tau2, const int N)
+{
+  NumericVector tau2new;
+  tau2new = tau2;
+  double tau2_scale;
+  
+  for (int t = 0; t < N; t++)
+  {
+    tau2_scale = temp[t] + prior_tau2;
+    tau2new[t] = 1 / rgamma(1, tau2_shape, (1/tau2_scale))[0];
+  }
+  return tau2new;
+}
+
+
+
+
+// [[Rcpp::export]]
+List binomialdeltaupdate(NumericMatrix X, const int nsites, const int ntime, NumericVector delta, NumericMatrix offset, NumericMatrix y, 
+                         NumericMatrix failures, const double sig2, const double delta_tune)
+{
+//Create new objects
+NumericVector p_current(nsites), p_proposal(nsites);
+double acceptance, proposal, oldlikebit=0, newlikebit=0, likebit, priorbit=0;
+int accept = 0;
+NumericVector deltanew;
+deltanew = delta;
+
+//Compute proposal acceptance for time t=1
+proposal = rnorm(1, deltanew[0], sqrt(sig2*delta_tune))[0];
+
+// Create the log likelihood acceptance probability component
+for(int j = 0; j < nsites; j++)     
+{
+  p_current[j] = exp(offset(j,0) + deltanew[0]) / (1 + exp(offset(j,0) + deltanew[0]));
+  p_proposal[j] = exp(offset(j,0) + proposal) / (1 + exp(offset(j,0) + proposal));
+  oldlikebit = oldlikebit + y(j,0) * log(p_current[j]) + failures(j,0) * log((1-p_current[j]));
+  newlikebit = newlikebit + y(j,0) * log(p_proposal[j]) + failures(j,0) * log((1-p_proposal[j]));
+}
+likebit = newlikebit - oldlikebit;
+
+// Create the prior acceptance component
+priorbit = 0.5 * pow((delta[1]-delta[0]),2) / sig2 - 0.5 * pow((delta[1]-proposal),2) / sig2;
+
+// Compute the acceptance probability and return the value
+acceptance = exp(likebit + priorbit);
+if(runif(1)[0] <= acceptance) 
+{
+  deltanew[0] = proposal;
+  accept = accept + 1;
+}
+else
+{ 
+}
+
+//Compute proposal acceptance for time t=2,...,(N-1)
+for(int t = 1; t < (ntime-1); t++)
+{
+  oldlikebit=0;
+  newlikebit=0;
+  priorbit=0;
+  
+  proposal = rnorm(1, deltanew[t], sqrt(sig2*delta_tune))[0];
+  // proposal = rnorm(1, delta[t], delta_tune)[0];
+  
+  // Create the log likelihood acceptance probability component
+  for(int j = 0; j < nsites; j++)     
+  {
+    p_current[j] = exp(offset(j,t) + deltanew[t]) / (1 + exp(offset(j,t) + deltanew[t]));
+    p_proposal[j] = exp(offset(j,t) + proposal) / (1 + exp(offset(j,t) + proposal));
+    oldlikebit = oldlikebit + y(j,t) * log(p_current[j]) + failures(j,t) * log((1-p_current[j]));
+    newlikebit = newlikebit + y(j,t) * log(p_proposal[j]) + failures(j,t) * log((1-p_proposal[j]));
+  }
+  likebit = newlikebit - oldlikebit;
+  
+  // Create the prior acceptance component
+  priorbit = 0.5 * (pow((deltanew[t]-deltanew[(t-1)]),2) + pow((deltanew[(t+1)]-deltanew[t]),2)) / sig2 - 0.5 * (pow((proposal-deltanew[(t-1)]),2) + pow((deltanew[(t+1)]-proposal),2))  / sig2;
+  
+  // Compute the acceptance probability and return the value
+  acceptance = exp(likebit + priorbit);
+  if(runif(1)[0] <= acceptance) 
+  {
+    deltanew[t] = proposal;
+    accept = accept + 1;
+  }
+  else
+  { 
+  }
+}
+//Compute proposal acceptance for time t=N
+oldlikebit=0;
+newlikebit=0;
+priorbit=0;
+
+proposal = rnorm(1, deltanew[(ntime-1)], sqrt(sig2*delta_tune))[0];
+
+// Create the log likelihood acceptance probability component
+for(int j = 0; j < nsites; j++)     
+{
+  p_current[j] = exp(offset(j,(ntime-1)) + deltanew[(ntime-1)]) / (1 + exp(offset(j,(ntime-1)) + deltanew[(ntime-1)]));
+  p_proposal[j] = exp(offset(j,(ntime-1)) + proposal) / (1 + exp(offset(j,(ntime-1)) + proposal));
+  oldlikebit = oldlikebit + y(j,(ntime-1)) * log(p_current[j]) + failures(j,(ntime-1)) * log((1-p_current[j]));
+  newlikebit = newlikebit + y(j,(ntime-1)) * log(p_proposal[j]) + failures(j,(ntime-1)) * log((1-p_proposal[j]));
+}
+likebit = newlikebit - oldlikebit;
+
+// Create the prior acceptance component
+priorbit = 0.5 * pow((deltanew[(ntime-1)]-deltanew[(ntime-2)]),2) / sig2 - 0.5 * pow((proposal-deltanew[(ntime-2)]),2)  / sig2;
+
+// Compute the acceptance probability and return the value
+acceptance = exp(likebit + priorbit);
+if(runif(1)[0] <= acceptance) 
+{
+  deltanew[(ntime-1)] = proposal;
+  accept = accept + 1;
+}
+else
+{ 
+}
+
+List out(2);
+out[0] = deltanew;
+out[1] = accept;
+return out;
+}
+
+
+// [[Rcpp::export]]
+double sigquadformcompute(const int ntime, NumericVector delta)
+{    
+double num=0;
+
+// Compute the sum of quadratic forms for updating sig2
+for(int t = 1; t < ntime; t++)
+{
+  num = num + pow((delta[t]-delta[(t-1)]), 2);
+}
+num = 0.5 * num;
+return num;
+}
+
+
+// [[Rcpp::export]]
+double rhoquadformcompute(NumericMatrix Wtriplet, NumericVector Wtripletsum, const int n_triplet, 
+                          const int nsites, const int ntime, NumericMatrix phi, double rho, NumericVector tau2)
+{    
+  NumericVector temp(nsites);
+  double num=0;
+  
+  for(int t = 0; t < ntime; t++)
+  {
+    temp = phi(_,t);  
+    num = num + (quadform(Wtriplet, Wtripletsum, n_triplet, nsites, temp, temp, rho) / tau2[t]);
+  }
+  return num;
+}
+
+
+
+// [[Rcpp::export]]
+List binomialsrecarupdate(NumericMatrix Wtriplet, NumericMatrix Wbegfin, NumericVector Wtripletsum, const int nsites, const int ntime,
+                         NumericMatrix phi, double rho, const NumericMatrix ymat, const NumericMatrix failuresmat,
+                         const double phi_tune, NumericMatrix offset, NumericVector denoffset, NumericVector tau2)
+{    
+  ///////////////////////////////////////////    
+  // Specify variables needed in the function
+  ///////////////////////////////////////////
+  double temp, priormean, priormeantemp, priorvar, priorvardenom, acceptance;
+  double propphi, oldpriorbit, newpriorbit, oldlikebit, newlikebit, lpold, lpnew, pold, pnew; 
+  NumericMatrix phinew(nsites,ntime);
+  phinew = phi;
+  int row, rowstart, rowend, accept=0;
+  
+  
+  //////////////////////////////////////////////////////
+  // Update the random effects at all time points
+  //////////////////////////////////////////////////////
+  for(int t = 0; t < ntime; t++)
+  {
+    for(int j = 0; j < nsites; j++)
+    {
+      // calculate prior mean and variance
+      priorvardenom = denoffset[j];
+      priorvar = tau2[t] / priorvardenom;
+      rowstart = Wbegfin(j,0) - 1;
+      rowend = Wbegfin(j,1);
+      priormeantemp = 0;
+      for(int l = rowstart; l < rowend; l++)
+      {
+        row = Wtriplet(l,1) - 1;
+        temp = Wtriplet(l, 2) * phinew(row,t); 
+        priormeantemp = priormeantemp + temp; 
+      }
+      priormean = (rho * priormeantemp) / priorvardenom;   
+      
+      // Propose a value and calculate the acceptance probability
+      propphi = rnorm(1, phinew(j,t), sqrt(priorvar*phi_tune))[0];
+      newpriorbit = (0.5/priorvar) * pow((propphi - priormean), 2); 
+      oldpriorbit = (0.5/priorvar) * pow((phinew(j,t) - priormean), 2);
+      lpold = phinew(j,t) + offset(j, t);
+      lpnew = propphi + offset(j, t); 
+      pold = exp(lpold) / (1 + exp(lpold));
+      pnew = exp(lpnew) / (1 + exp(lpnew));        
+      oldlikebit = ymat(j,t) * log(pold) + failuresmat(j,t) * log((1-pold));
+      newlikebit = ymat(j,t) * log(pnew) + failuresmat(j,t) * log((1-pnew));
+      acceptance = exp(oldpriorbit - newpriorbit - oldlikebit + newlikebit);
+      if(runif(1)[0] <= acceptance) 
+      {
+        phinew(j,t) = propphi;
+        accept = accept + 1;
+      }
+      else
+      { 
+      }
+    }
+  }
+  
+  List out(2);
+  out[0] = phinew;
+  out[1] = accept;
+  return out;
+}
+
+
+
+// [[Rcpp::export]]
+List poissonsrecarupdate(NumericMatrix Wtriplet, NumericMatrix Wbegfin, NumericVector Wtripletsum, const int nsites, const int ntime,
+                        NumericMatrix phi, double rho, const NumericMatrix ymat, const double phi_tune, NumericMatrix offset, NumericVector denoffset,
+                        NumericVector tau2)
+{    
+  ///////////////////////////////////////////    
+  // Specify variables needed in the function
+  ///////////////////////////////////////////
+  double temp, priormean, priormeantemp, priorvar, priorvardenom, acceptance;
+  double propphi, oldpriorbit, newpriorbit, oldlikebit, newlikebit, lpold, lpnew; 
+  NumericMatrix phinew(nsites,ntime);
+  phinew = phi;
+  int row, rowstart, rowend, accept=0;
+  
+  //////////////////////////////////////////////////////
+  // Update the random effects at all time points
+  //////////////////////////////////////////////////////
+  for(int t = 0; t < ntime; t++)
+  {
+    for(int j = 0; j < nsites; j++)
+    {
+      // calculate prior mean and variance
+      priorvardenom = denoffset[j];
+      priorvar = tau2[t] / priorvardenom;
+      rowstart = Wbegfin(j,0) - 1;
+      rowend = Wbegfin(j,1);
+      priormeantemp = 0;
+      for(int l = rowstart; l < rowend; l++)
+      {
+        row = Wtriplet(l,1) - 1;
+        temp = Wtriplet(l, 2) * phinew(row,t); 
+        priormeantemp = priormeantemp + temp; 
+      }
+      priormean = (rho * priormeantemp) / priorvardenom;   
+      
+      // Propose a value and calculate the acceptance probability
+      propphi = rnorm(1, phinew(j,t), sqrt(priorvar*phi_tune))[0];
+      newpriorbit = (0.5/priorvar) * pow((propphi - priormean), 2); 
+      oldpriorbit = (0.5/priorvar) * pow((phinew(j,t) - priormean), 2);
+      lpold = phinew(j,t) + offset(j, t);
+      lpnew = propphi + offset(j, t); 
+      oldlikebit = ymat(j,t) * lpold - exp(lpold);
+      newlikebit = ymat(j,t) * lpnew - exp(lpnew);
+      acceptance = exp(oldpriorbit - newpriorbit - oldlikebit + newlikebit);
+      if(runif(1)[0] <= acceptance) 
+      {
+        phinew(j,t) = propphi;
+        accept = accept + 1;
+      }
+      else
+      { 
+      }
+    }
+  }
+  
+  List out(2);
+  out[0] = phinew;
+  out[1] = accept;
+  return out;
+}
+
+
+// [[Rcpp::export]]
+List poissondeltaupdate(NumericMatrix X, const int nsites, const int ntime, NumericVector delta, NumericMatrix offset, NumericMatrix y, 
+                        const double sig2, const double delta_tune)
+{
+  //Create new objects
+  NumericVector p_current(nsites), p_proposal(nsites);
+  double acceptance, proposal, oldlikebit=0, newlikebit=0, likebit, priorbit=0;
+  int accept = 0;
+  NumericVector deltanew;
+  deltanew = delta;
+  
+  //Compute proposal acceptance for time t=1
+  proposal = rnorm(1, deltanew[0], sqrt(sig2*delta_tune))[0];
+  
+  // Create the log likelihood acceptance probability component
+  for(int j = 0; j < nsites; j++)     
+  {
+    p_current[j] = exp(offset(j,0) + deltanew[0]);
+    p_proposal[j] = exp(offset(j,0) + proposal);
+    oldlikebit = oldlikebit + y(j,0) * log(p_current[j]) - p_current[j];
+    newlikebit = newlikebit + y(j,0) * log(p_proposal[j]) - p_proposal[j];
+  }
+  likebit = newlikebit - oldlikebit;
+  
+  // Create the prior acceptance component
+  priorbit = 0.5 * pow((deltanew[1]-deltanew[0]),2) / sig2 - 0.5 * pow((deltanew[1]-proposal),2) / sig2;
+  
+  // Compute the acceptance probability and return the value
+  acceptance = exp(likebit + priorbit);
+  if(runif(1)[0] <= acceptance) 
+  {
+    deltanew[0] = proposal;
+    accept = accept + 1;
+  }
+  else
+  { 
+  }
+  
+  //Compute proposal acceptance for time t=2,...,(N-1)
+  for(int t = 1; t < (ntime-1); t++)
+  {
+    oldlikebit=0;
+    newlikebit=0;
+    priorbit=0;
+    
+    proposal = rnorm(1, deltanew[t], sqrt(sig2*delta_tune))[0];
+    
+    // Create the log likelihood acceptance probability component
+    for(int j = 0; j < nsites; j++)     
+    {
+      p_current[j] = exp(offset(j,t) + deltanew[t]);
+      p_proposal[j] = exp(offset(j,t) + proposal);
+      oldlikebit = oldlikebit + y(j,t) * log(p_current[j]) - p_current[j];
+      newlikebit = newlikebit + y(j,t) * log(p_proposal[j]) - p_proposal[j];
+    }
+    likebit = newlikebit - oldlikebit;
+    
+    // Create the prior acceptance component
+    priorbit = 0.5 * (pow((deltanew[t]-deltanew[(t-1)]),2) + pow((deltanew[(t+1)]-deltanew[t]),2)) / sig2 - 0.5 * (pow((proposal-deltanew[(t-1)]),2) + pow((deltanew[(t+1)]-proposal),2))  / sig2;
+    
+    // Compute the acceptance probability and return the value
+    acceptance = exp(likebit + priorbit);
+    if(runif(1)[0] <= acceptance) 
+    {
+      deltanew[t] = proposal;
+      accept = accept + 1;
+    }
+    else
+    { 
+    }
+  }
+  //Compute proposal acceptance for time t=N
+  oldlikebit=0;
+  newlikebit=0;
+  priorbit=0;
+  
+  proposal = rnorm(1, deltanew[(ntime-1)], sqrt(sig2*delta_tune))[0];
+  
+  // Create the log likelihood acceptance probability component
+  for(int j = 0; j < nsites; j++)     
+  {
+    p_current[j] = exp(offset(j,(ntime-1)) + deltanew[(ntime-1)]);
+    p_proposal[j] = exp(offset(j,(ntime-1)) + proposal);
+    oldlikebit = oldlikebit + y(j,(ntime-1)) * log(p_current[j]) - p_current[j];
+    newlikebit = newlikebit + y(j,(ntime-1)) * log(p_proposal[j]) - p_proposal[j];
+  }
+  likebit = newlikebit - oldlikebit;
+  
+  // Create the prior acceptance component
+  priorbit = 0.5 * pow((deltanew[(ntime-1)]-deltanew[(ntime-2)]),2) / sig2 - 0.5 * pow((proposal-deltanew[(ntime-2)]),2)  / sig2;
+  
+  // Compute the acceptance probability and return the value
+  acceptance = exp(likebit + priorbit);
+  if(runif(1)[0] <= acceptance) 
+  {
+    deltanew[(ntime-1)] = proposal;
+    accept = accept + 1;
+  }
+  else
+  { 
+  }
+  
+  List out(2);
+  out[0] = deltanew;
+  out[1] = accept;
+  return out;
+}
+
+
+// [[Rcpp::export]]
+NumericVector tauquadformcompute2(NumericMatrix Wtriplet, NumericVector Wtripletsum, const int n_triplet, 
+                          const int nsites, const int ntime, NumericMatrix phi, double rho)
+{    
+NumericVector temp(nsites), num(ntime);
+
+// Compute the sum of quadratic forms for updating tau
+for(int t = 0; t < ntime; t++)
+{
+  temp = phi(_,t);  
+  num[t] = quadform(Wtriplet, Wtripletsum, n_triplet, nsites, temp, temp, rho);
+}
+
+return num;
 }

@@ -10,25 +10,26 @@ Spatio-Temporal Generalised Linear Mixed Models For Areal Unit Data
 \description{
 Implements a class of spatio-temporal generalised linear mixed models for areal unit data, 
 with inference in a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. The 
-response variable can be binomial, Gaussian or Poisson. The spatio-temporal autocorrelation
-is modelled by  random effects, which are assigned conditional autoregressive (CAR) prior 
-distributions. A number of different random effects structures are available, and full details
-are given in the vignette accompanying this package and the references below. The initial 
-creation the Engineering and Physical Science Research Council (EPSRC) grant EP/J017442/1.
+response variable can be binomial, Gaussian or Poisson. The spatio-temporal autocorrelation 
+is modelled by  random effects,  which are assigned conditional autoregressive (CAR) prior 
+distributions. A number of different random effects structures are available, and full details 
+are given in the vignette accompanying this package and the references below. The creation of 
+this package was supported by the Engineering and Physical Science Research Council (EPSRC) 
+grant EP/J017442/1 and the Medical Research Council (MRC) grant MR/L022184/1.
 }
 
 \details{
 \tabular{ll}{
 Package: \tab CARBayesST\cr
 Type: \tab Package\cr
-Version: \tab 2.0\cr
-Date: \tab 2015-07-02\cr
+Version: \tab 2.1\cr
+Date: \tab 2015-09-04\cr
 License: \tab GPL (>= 2)\cr
 }
 }
 
 \author{
-Author: Duncan Lee and Alastair Rushworth
+Author: Duncan Lee, Alastair Rushworth and Gary Napier
 
 Maintainer: Duncan Lee <Duncan.Lee@glasgow.ac.uk>
 }

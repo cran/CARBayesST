@@ -59,8 +59,9 @@ This is a vignette for the \proglang{R} package \pkg{CARBayesST} version 2.1, wh
 %% The address of (at least) one author should be given
 %% in the following format:
 
+\usepackage{Sweave}
 \begin{document}
-\SweaveOpts{concordance=TRUE}
+\input{CARBayesSTvignette-concordance}
 
 %%%%%%%%%%%%%%
 %%%% Section 1
@@ -256,9 +257,11 @@ All models in this package are fitted in a Bayesian setting using Markov chain M
 \subsection{Obtaining the software}
 \pkg{CARBayesST} is a package for the \proglang{R} statistical software, and can be downloaded from CRAN (\emph{http://cran.r-project.org/}) for Windows, Linux and Apple platforms.  The package requires \proglang{R} ($\geq$ 3.0.0) and depends on packages \pkg{MASS}, and \pkg{Rcpp} ($\geq$ 0.11.5). It also imports functionality from the \pkg{coda}, \pkg{spam} and \pkg{truncdist} packages. Once installed it can be loaded using the command
 
-<<>>=
-library(CARBayesST)
-@
+\begin{Schunk}
+\begin{Sinput}
+> library(CARBayesST)
+\end{Sinput}
+\end{Schunk}
 
 The packages listed above are automatically loaded by the above call, but a complete spatial analysis beginning with reading in and formatting shapefiles and data, creating the neighbourhood matrix $\mathbf{W}$, and plotting the results requires a number of other packages. Thus you may also find the following packages useful: \pkg{CARBayes}, \pkg{maptools},\pkg{shapefiles}, \pkg{sp}, \pkg{spdep}.
 

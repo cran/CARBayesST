@@ -16,7 +16,7 @@ ST.CARlocalised <- function(formula, family, data=NULL,  G, trials=NULL, W, burn
         model <- poisson.CARlocalised(formula=formula, data=data,  G=G, W=W, burnin=burnin, n.sample=n.sample, thin=thin, prior.mean.beta=prior.mean.beta, prior.var.beta=prior.var.beta, prior.delta=prior.delta, prior.tau2=prior.tau2, verbose=verbose)          
     }else
     {
-        stop("the family arugment is not one of `binomial', `gaussian' or `poisson'.", call.=FALSE)     
+        stop("the family arugment is not one of `binomial' or `poisson'.", call.=FALSE)     
     }
     return(model)     
 }

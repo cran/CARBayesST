@@ -24,7 +24,7 @@ Fit a spatio-temporal generalised linear mixed model to data with a spatio-tempo
 \usage{
 ST.CARadaptive(formula, family, data=NULL, trials=NULL, W, burnin, n.sample, thin=1,  
 prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.tau2=NULL, 
-prior.zeta2 = NULL, verbose=TRUE)
+prior.zeta2 = NULL, verbose=TRUE, rhofix = NULL, epsilon = 0)
 }
 
 \arguments{
@@ -91,6 +91,12 @@ prior.zeta2 = NULL, verbose=TRUE)
     }
     \item{verbose}{
         Logical, should the function update the user on its progress.  
+    }
+    \item{rhofix}{
+        Value between 0 and 1 at which to fix the spatial correlation parameter.  Setting to 1, reduces the random effects prior to the intrinsic CAR model. When set to NULL, (the default) the parameter is estimated with a uniform[0,1] prior.
+    }
+    \item{epsilon}{
+        Diagonal ridge parameter to add to the random effects prior precision, only required when rhofix = 1, and the prior precision is improper.  Defaults to 0.
     }
 }
 
