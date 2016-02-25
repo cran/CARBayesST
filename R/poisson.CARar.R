@@ -1,4 +1,4 @@
-poisson.CARar <- function(formula, data=NULL, W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, verbose=TRUE)
+poisson.CARar <- function(formula, data=NULL, W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, fix.rho.S=FALSE, rho.S=NULL, fix.rho.T=FALSE, rho.T=NULL, verbose=TRUE)
 {
 #### Check on the verbose option
      if(is.null(verbose)) verbose=TRUE     
@@ -64,16 +64,35 @@ X.indicator <- rep(NA, p)       # To determine which parameter estimates to tran
      }
      
      
+#### Format and check the neighbourhood matrix W
+if(!is.matrix(W)) stop("W is not a matrix.", call.=FALSE)
+K <- nrow(W)
+if(ncol(W)!= K) stop("W has the wrong number of columns.", call.=FALSE)
+if(nrow(W)!= K) stop("W has the wrong number of rows.", call.=FALSE)
+if(floor(N.all/K)!=ceiling(N.all/K)) stop("The number of spatial areas is not a multiple of the number of data points.", call.=FALSE)
+N <- N.all / K
+if(sum(is.na(W))>0) stop("W has missing 'NA' values.", call.=FALSE)
+if(!is.numeric(W)) stop("W has non-numeric values.", call.=FALSE)
+if(min(W)<0) stop("W has negative elements.", call.=FALSE)
+if(sum(W!=t(W))>0) stop("W is not symmetric.", call.=FALSE)
+if(min(apply(W, 1, sum))==0) stop("W has some areas with no neighbours (one of the row sums equals zero).", call.=FALSE)  
+
 #### Response variable
 Y <- model.response(frame)
-     if(sum(is.na(Y))>0) stop("the response has missing 'NA' values.", call.=FALSE)
-     if(!is.numeric(Y)) stop("the response variable has non-numeric values.", call.=FALSE)
-int.check <- N.all-sum(ceiling(Y)==floor(Y))
-     if(int.check > 0) stop("the respons variable has non-integer values.", call.=FALSE)
-     if(min(Y)<0) stop("the response variable has negative values.", call.=FALSE)
-Y <- as.numeric(Y)     
-log.Y <- log(Y)
-log.Y[Y==0] <- -0.1   
+Y <- as.numeric(Y)
+
+## Create the missing value indicator
+which.miss <- as.numeric(!is.na(Y))
+which.miss.mat <- matrix(which.miss, nrow=K, ncol=N, byrow=FALSE)
+n.miss <- N.all - sum(which.miss)
+Y.miss <- Y
+Y.miss[which.miss==0] <- median(Y, na.rm=TRUE)
+
+if(!is.numeric(Y)) stop("the response variable has non-numeric values.", call.=FALSE)
+int.check <- N.all- n.miss - sum(ceiling(Y)==floor(Y), na.rm=TRUE)
+if(int.check > 0) stop("the response variable has non-integer values.", call.=FALSE)
+if(min(Y, na.rm=TRUE)<0) stop("the response variable has negative values.", call.=FALSE)
+
 
 
 #### Offset variable
@@ -84,28 +103,39 @@ offset <- try(model.offset(frame), silent=TRUE)
      if(!is.numeric(offset)) stop("the offset variable has non-numeric values.", call.=FALSE)
           
      
-     #### Format and check the neighbourhood matrix W
-     if(!is.matrix(W)) stop("W is not a matrix.", call.=FALSE)
-K <- nrow(W)
-     if(ncol(W)!= K) stop("W has the wrong number of columns.", call.=FALSE)
-     if(nrow(W)!= K) stop("W has the wrong number of rows.", call.=FALSE)
-     if(floor(N.all/K)!=ceiling(N.all/K)) stop("The number of spatial areas is not a multiple of the number of data points.", call.=FALSE)
-N <- N.all / K
-     if(sum(is.na(W))>0) stop("W has missing 'NA' values.", call.=FALSE)
-     if(!is.numeric(W)) stop("W has non-numeric values.", call.=FALSE)
-     if(min(W)<0) stop("W has negative elements.", call.=FALSE)
-     if(sum(W!=t(W))>0) stop("W is not symmetric.", call.=FALSE)
-    if(min(apply(W, 1, sum))==0) stop("W has some areas with no neighbours (one of the row sums equals zero).", call.=FALSE)    
+  
 
   
 #### Specify the initial parameter values
-beta <- glm(Y~X.standardised-1, offset=offset, family=poisson)$coefficients
-regression.vec <- X.standardised %*% beta
-res.temp <- log.Y - regression.vec - offset
-phi <- rnorm(n=N.all, mean=0, sd = 2*sd(res.temp))
-tau2 <- runif(1, min=var(res.temp)/2, max=var(res.temp)*2)
-rho <- runif(1)
-gamma <- runif(1)
+mod.glm <- glm(Y~X.standardised-1, offset=offset, family="quasipoisson")
+beta.mean <- mod.glm$coefficients
+beta.sd <- sqrt(diag(summary(mod.glm)$cov.scaled))
+beta <- rnorm(n=length(beta.mean), mean=beta.mean, sd=beta.sd)
+
+log.Y <- log(Y)
+log.Y[Y==0] <- -0.1  
+res.temp <- log.Y - X.standardised %*% beta - offset
+res.sd <- sd(res.temp, na.rm=TRUE)/5
+phi <- rnorm(n=N.all, mean=0, sd = res.sd)
+tau2 <- var(phi)/10
+
+if(fix.rho.S)
+{
+    rho <- rho.S
+}else
+{
+    rho <- runif(1)       
+}
+
+if(fix.rho.T)
+{
+    gamma <- rho.T
+}else
+{
+    gamma <- runif(1)       
+}   
+
+
 
 
 #### Check and specify the priors
@@ -169,18 +199,36 @@ blocksize.beta <- 5
           }
      }         
 
-     
+## Check for errors on rho and fix.rho
+if(!is.logical(fix.rho.S)) stop("fix.rho.S is not logical.", call.=FALSE)   
+if(fix.rho.S & is.null(rho.S)) stop("rho.S is fixed but an initial value was not set.", call.=FALSE)   
+if(fix.rho.S & !is.numeric(rho.S) ) stop("rho.S is not numeric.", call.=FALSE)  
+if(rho<0 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
+if(rho>1 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
+
+## Check for errors on rho and fix.rho
+if(!is.logical(fix.rho.T)) stop("fix.rho.T is not logical.", call.=FALSE)   
+if(fix.rho.T & is.null(rho.T)) stop("rho.T is fixed but an initial value was not set.", call.=FALSE)   
+if(fix.rho.T & !is.numeric(rho.T) ) stop("rho.T is not numeric.", call.=FALSE)  
+if(gamma<0 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
+if(gamma>1 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
+
 #### Set up matrices to store samples
 n.keep <- floor((n.sample - burnin)/thin)
 samples.beta <- array(NA, c(n.keep, p))
 samples.phi <- array(NA, c(n.keep, N.all))
 samples.tau2 <- array(NA, c(n.keep, 1))
-samples.rho <- array(NA, c(n.keep, 1))
-samples.gamma <- array(NA, c(n.keep, 1))     
+if(!fix.rho.S) samples.rho <- array(NA, c(n.keep, 1))
+if(!fix.rho.T) samples.gamma <- array(NA, c(n.keep, 1))
 samples.fitted <- array(NA, c(n.keep, N.all))
+samples.like <- array(NA, c(n.keep, N.all))
 samples.deviance <- array(NA, c(n.keep, 1))
+if(n.miss>0) samples.Y <- array(NA, c(n.keep, n.miss))
 
-     
+  
+
+
+
 #### Specify the Metropolis quantities
 accept.all <- rep(0,6)
 accept <- accept.all
@@ -223,26 +271,51 @@ for(i in 1:K)
 
 
 ## Create the determinant     
-Wstar <- diag(apply(W,1,sum)) - W
-Wstar.eigen <- eigen(Wstar)
-Wstar.val <- Wstar.eigen$values
-det.Q.W <-  0.5 * sum(log((rho * Wstar.val + (1-rho))))    
+if(!fix.rho.S) 
+{
+    Wstar <- diag(apply(W,1,sum)) - W
+    Wstar.eigen <- eigen(Wstar)
+    Wstar.val <- Wstar.eigen$values
+    det.Q.W <-  0.5 * sum(log((rho * Wstar.val + (1-rho))))     
+}else
+{}
 
      
 #### Specify quantities that do not change
 offset.mat <- matrix(offset, nrow=K, ncol=N, byrow=FALSE) 
 regression.mat <- matrix(X.standardised %*% beta, nrow=K, ncol=N, byrow=FALSE)
 Y.mat <- matrix(Y, nrow=K, ncol=N, byrow=FALSE) 
+Y.mat.miss <- matrix(Y.miss, nrow=K, ncol=N, byrow=FALSE)
 phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)   
   
-  
+
+## Check for islands
+W.list<- mat2listw(W)
+W.nb <- W.list$neighbours
+W.islands <- n.comp.nb(W.nb)
+islands <- W.islands$comp.id
+n.islands <- max(W.islands$nc)
+    if(rho==1 & gamma==1) 
+    {
+    tau2.phi.shape <- prior.tau2[1] + prior.tau2[1] + ((N-1) * (K-1))/2
+    }else if(rho==1)
+    {
+    tau2.phi.shape <- prior.tau2[1] + prior.tau2[1] + (N * (K-1))/2        
+    }else if(gamma==1)
+    {
+    tau2.phi.shape <- prior.tau2[1] + prior.tau2[1] + ((N-1) * K)/2          
+    }else
+    {}
+    
+
+
   ###########################
   #### Run the Bayesian model
   ###########################
   ## Start timer
      if(verbose)
      {
-     cat("Collecting", n.sample, "samples\n", sep = " ")
+     cat("Generating", n.sample, "samples\n", sep = " ")
      progressBar <- txtProgressBar(style = 3)
      percentage.points<-round((1:100/100)*n.sample)
      }else
@@ -264,7 +337,7 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
         for(r in 1:n.beta.block)
         {
             proposal.beta[beta.beg[r]:beta.fin[r]] <- proposal[beta.beg[r]:beta.fin[r]]
-            prob <- poissonbetaupdate(X.standardised, N.all, p, beta, proposal.beta, offset.temp, Y, prior.mean.beta, prior.var.beta)
+            prob <- poissonbetaupdate(X.standardised, N.all, p, beta, proposal.beta, offset.temp, Y.miss, prior.mean.beta, prior.var.beta, which.miss)
             if(prob > runif(1))
             {
                 beta[beta.beg[r]:beta.fin[r]] <- proposal.beta[beta.beg[r]:beta.fin[r]]
@@ -283,7 +356,7 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
     ####################
     phi.offset <- offset.mat + regression.mat
     den.offset <- rho * W.triplet.sum + 1 - rho
-    temp1 <- poissonarcarupdate(W.triplet, W.begfin, W.triplet.sum,  K, N, phi.mat, tau2, gamma, rho, Y.mat, proposal.sd.phi, phi.offset, den.offset)      
+    temp1 <- poissonarcarupdate(W.triplet, W.begfin, W.triplet.sum,  K, N, phi.mat, tau2, gamma, rho, Y.mat.miss, proposal.sd.phi, phi.offset, den.offset, which.miss.mat)      
     phi.temp <- temp1[[1]]
     phi <- as.numeric(phi.temp)  - mean(as.numeric(phi.temp))
     phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
@@ -294,11 +367,14 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
     ####################
     ## Sample from gamma
     ####################
+    if(!fix.rho.T)
+    {
     temp2 <- gammaquadformcompute(W.triplet, W.triplet.sum, W.n.triplet,  K, N, phi.mat, rho)
     mean.gamma <- temp2[[1]] / temp2[[2]]
     sd.gamma <- sqrt(tau2 / temp2[[2]]) 
     gamma <- rtrunc(n=1, spec="norm", a=0, b=1, mean=mean.gamma, sd=sd.gamma)   
-
+    }else
+    {}
     
      
     
@@ -315,6 +391,8 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
     ##################
     ## Sample from rho
     ##################
+    if(!fix.rho.S)
+    {
     proposal.rho <- rtrunc(n=1, spec="norm", a=0, b=1, mean=rho, sd=proposal.sd.rho)
     temp4 <- tauquadformcompute(W.triplet, W.triplet.sum, W.n.triplet,  K, N, phi.mat, proposal.rho, gamma)
     det.Q.W.proposal <- 0.5 * sum(log((proposal.rho * Wstar.val + (1-proposal.rho))))
@@ -330,17 +408,19 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
         {
         }              
     accept[6] <- accept[6] + 1       
-    
+    }else
+    {}
     
      
     #########################
     ## Calculate the deviance
     #########################
-    fitted <- as.numeric(exp(offset.mat + regression.mat + phi.mat))
+    lp <- as.numeric(offset.mat + regression.mat + phi.mat)
+    fitted <- exp(lp)
     deviance.all <- dpois(x=as.numeric(Y), lambda=fitted, log=TRUE)
-    deviance <- -2 * sum(deviance.all)   
-     
-    
+    like <- exp(deviance.all)
+    deviance <- -2 * sum(deviance.all, na.rm=TRUE)   
+ 
     
     ###################
     ## Save the results
@@ -350,11 +430,13 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
       ele <- (j - burnin) / thin
       samples.beta[ele, ] <- beta
       samples.phi[ele, ] <- as.numeric(phi)
-      samples.rho[ele, ] <- rho
       samples.tau2[ele, ] <- tau2
-      samples.gamma[ele, ] <- gamma
+      if(!fix.rho.S) samples.rho[ele, ] <- rho
+      if(!fix.rho.T) samples.gamma[ele, ] <- gamma
       samples.deviance[ele, ] <- deviance
       samples.fitted[ele, ] <- fitted
+      samples.like[ele, ] <- like
+      if(n.miss>0) samples.Y[ele, ] <- rpois(n=n.miss, lambda=fitted[which.miss==0])
       }else
       {
       }
@@ -371,16 +453,17 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
       accept.beta <- 100 * accept[1] / accept[2]
       accept.phi <- 100 * accept[3] / accept[4]
       accept.rho <- 100 * accept[5] / accept[6]
+      if(is.na(accept.rho)) accept.rho <- 45
       accept.all <- accept.all + accept
       accept <- rep(0,6)
       
       #### phi tuning parameter
         if(accept.phi > 50)
         {
-        proposal.sd.phi <- 2 * proposal.sd.phi
+        proposal.sd.phi <- proposal.sd.phi + 0.1 * proposal.sd.phi
         }else if(accept.phi < 40)              
         {
-        proposal.sd.phi <- 0.5 * proposal.sd.phi
+        proposal.sd.phi <- proposal.sd.phi - 0.1 * proposal.sd.phi
         }else
         {
         }
@@ -388,10 +471,10 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
       #### beta tuning parameter
         if(accept.beta > 40)
         {
-        proposal.sd.beta <- 2 * proposal.sd.beta
+        proposal.sd.beta <- proposal.sd.beta + 0.1 * proposal.sd.beta
         }else if(accept.beta < 20)              
         {
-        proposal.sd.beta <- 0.5 * proposal.sd.beta
+        proposal.sd.beta <- proposal.sd.beta - 0.1 * proposal.sd.beta
         }else
         {
         }
@@ -399,10 +482,10 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
       #### rho tuning parameter
         if(accept.rho > 50)
         {
-        proposal.sd.rho <- 2 * min(proposal.sd.rho, 0.5)
+        proposal.sd.rho <- min(proposal.sd.rho + 0.1 * proposal.sd.rho, 0.5)
         }else if(accept.rho < 40)              
         {
-        proposal.sd.rho <- 0.5 * proposal.sd.rho
+        proposal.sd.rho <- proposal.sd.rho - 0.1 * proposal.sd.rho
         }else
         {
         }      
@@ -436,9 +519,15 @@ phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
 ## Compute the acceptance rates
 accept.beta <- 100 * accept.all[1] / accept.all[2]
 accept.phi <- 100 * accept.all[3] / accept.all[4]
-accept.rho <- 100 * accept.all[5] / accept.all[6]
-accept.final <- c(accept.beta, accept.phi, accept.rho)
-names(accept.final) <- c("beta", "phi", "rho")
+if(!fix.rho.S)
+{
+    accept.rho <- 100 * accept.all[5] / accept.all[6]
+}else
+{
+    accept.rho <- NA    
+}
+accept.final <- c(accept.beta, accept.phi, accept.rho, 100)
+names(accept.final) <- c("beta", "phi", "rho.S", "rho.T")
   
 
 ## Compute information criterion (DIC, DIC3, WAIC)
@@ -446,9 +535,16 @@ median.beta <- apply(samples.beta,2,median)
 regression.mat <- matrix(X.standardised %*% median.beta, nrow=K, ncol=N, byrow=FALSE)   
 median.phi <- matrix(apply(samples.phi, 2, median), nrow=K, ncol=N)
 fitted.median <- as.numeric(exp(offset.mat + median.phi + regression.mat))
-deviance.fitted <- -2 * sum(dpois(x=as.numeric(Y), lambda=fitted.median, log=TRUE))
+deviance.fitted <- -2 * sum(dpois(x=as.numeric(Y), lambda=fitted.median, log=TRUE), na.rm=TRUE)
 p.d <- median(samples.deviance) - deviance.fitted
 DIC <- 2 * median(samples.deviance) - deviance.fitted     
+
+
+#### Watanabe-Akaike Information Criterion (WAIC)
+LPPD <- sum(log(apply(samples.like,2,mean)), na.rm=TRUE)
+p.w <- sum(apply(log(samples.like),2,var), na.rm=TRUE)
+WAIC <- -2 * (LPPD - p.w)
+
 
 ## Compute the LMPL
 CPO <- rep(NA, N.all)
@@ -456,7 +552,7 @@ CPO <- rep(NA, N.all)
     {
     CPO[j] <- 1/median((1 / dpois(x=Y[j], lambda=samples.fitted[ ,j])))    
     }
-LMPL <- sum(log(CPO))  
+LMPL <- sum(log(CPO), na.rm=TRUE)  
        
   
 ## Create the Fitted values
@@ -500,14 +596,31 @@ summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.beta,p), effectiv
 rownames(summary.beta) <- colnames(X)
 colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
 
-summary.hyper <- array(NA, c(3, 7))     
+summary.hyper <- array(NA, c(3, 7))    
+rownames(summary.hyper) <- c("tau2", "rho.S", "rho.T")     
 summary.hyper[1,1:3] <- quantile(samples.tau2, c(0.5, 0.025, 0.975))
-summary.hyper[2,1:3] <- quantile(samples.rho, c(0.5, 0.025, 0.975))
-summary.hyper[3,1:3] <- quantile(samples.gamma, c(0.5, 0.025, 0.975))
-rownames(summary.hyper) <- c("tau2", "rho", "gamma")     
 summary.hyper[1, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.tau2)), geweke.diag(mcmc(samples.tau2))$z)     
-summary.hyper[2, 4:7] <- c(n.keep, accept.rho, effectiveSize(mcmc(samples.rho)), geweke.diag(mcmc(samples.rho))$z)   
-summary.hyper[3, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.gamma)), geweke.diag(mcmc(samples.gamma))$z)       
+
+if(!fix.rho.S)
+{
+    summary.hyper[2, 1:3] <- quantile(samples.rho, c(0.5, 0.025, 0.975))
+    summary.hyper[2, 4:7] <- c(n.keep, accept.rho, effectiveSize(samples.rho), geweke.diag(samples.rho)$z)
+}else
+{
+    summary.hyper[2, 1:3] <- c(rho, rho, rho)
+    summary.hyper[2, 4:7] <- rep(NA, 4)
+}
+
+if(!fix.rho.T)
+{
+    summary.hyper[3, 1:3] <- quantile(samples.gamma, c(0.5, 0.025, 0.975))
+    summary.hyper[3, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.gamma)), geweke.diag(mcmc(samples.gamma))$z)       
+}else
+{
+    summary.hyper[3, 1:3] <- c(gamma, gamma, gamma)
+    summary.hyper[3, 4:7] <- rep(NA, 4)
+}   
+
 
 summary.results <- rbind(summary.beta, summary.hyper)
 summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
@@ -515,11 +628,35 @@ summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
 
      
 ## Compile and return the results
-modelfit <- c(DIC, p.d, LMPL)
-names(modelfit) <- c("DIC", "p.d", "LMPL")
-samples <- list(beta=mcmc(samples.beta.orig), phi=mcmc(samples.phi),  rho=mcmc(samples.rho), tau2=mcmc(samples.tau2), gamma=mcmc(samples.gamma), fitted=mcmc(samples.fitted))
+modelfit <- c(DIC, p.d, WAIC, p.w, LMPL)
+names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL")
+
+if(fix.rho.S & fix.rho.T)
+{
+    samples.rhoext <- NA
+}else if(fix.rho.S & !fix.rho.T)
+{
+    samples.rhoext <- samples.gamma
+    names(samples.rhoext) <- "rho.T"
+}else if(!fix.rho.S & fix.rho.T)
+{
+    samples.rhoext <- samples.rho  
+    names(samples.rhoext) <- "rho.S"
+}else
+{
+    samples.rhoext <- cbind(samples.rho, samples.gamma)
+    colnames(samples.rhoext) <- c("rho.S", "rho.T")
+}
+
+if(n.miss==0) samples.Y = NA
+
+
+
+samples <- list(beta=mcmc(samples.beta.orig), phi=mcmc(samples.phi),  rho=mcmc(samples.rhoext), tau2=mcmc(samples.tau2), fitted=mcmc(samples.fitted), Y=mcmc(samples.Y))
 model.string <- c("Likelihood model - Poisson (log link function)", "\nLatent structure model - Autoregressive CAR model\n")
-results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=NULL, formula=formula, model=model.string,  X=X)
+results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=NULL, formula=formula, model=model.string, X=X)
+
+
 class(results) <- "carbayesST"
     if(verbose)
      {

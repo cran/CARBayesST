@@ -12,7 +12,7 @@
     variable can be binomial or Poisson. The linear predictor is modelled by known 
     covariates, a vector of random effects and a piecewise constant intercept process. The 
     random effects follow the multivariate first order autoregressive time series process
-    proposed by Rushworth et al.(2014)., and are the same as those used in the ST.CARar() function.
+    proposed by Rushworth et al.(2014), and are the same as those used in the ST.CARar() function.
     The piecewise constant intercept component allows neighbouring areal units to have very
     different values if they are assigned to a different intercept component. This model allows
     for localised smoothness as some pairs of neighbouring areas or time periods can have similar 
@@ -33,10 +33,10 @@
     \item{formula}{
         A formula for the covariate part of the model using the syntax of the
         lm() function. Offsets can be included here using the offset() function. 
-        The response and each covariate should be vectors of length (KT)*1, where
-        K is the number of spatial units and T is the number of time periods. Each
+        The response and each covariate should be vectors of length (KN)*1, where
+        K is the number of spatial units and N is the number of time periods. Each
         vector should be ordered so that the first K data points are the set of all
-        K spatial locations at time 1, the next K are the set of spatial points for
+        K spatial locations at time 1, the next K are the set of spatial locations for
         time 2 and so on.
     }
     \item{family}{
@@ -69,7 +69,7 @@
     }
         \item{thin}{
         The level of thinning to apply to the McMC samples to reduce their temporal 
-        autocorrelation. Defaults to 1.
+        autocorrelation. Defaults to 1 (no thinning).
     }
         \item{prior.mean.beta}{
         A vector of prior means for the regression parameters beta (Gaussian priors are 
@@ -98,8 +98,9 @@
     \item{fitted.values }{A vector of fitted values for each area and time period.}
     \item{residuals }{A vector of residuals for each area and time period.}
     \item{modelfit }{Model fit criteria including the Deviance Information Criterion 
-                     (DIC), the effective number of parameters in the model (p.d), and the Log 
-                     Marginal Predictive Likelihood (LMPL).}
+(DIC) and its corresponding estimated effective number of parameters (p.d), the Log 
+Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Criterion 
+(WAIC) and its corresponding estimated number of effective parameters (p.w).}
     \item{accept }{The acceptance probabilities for the parameters.}
     \item{localised.structure }{A vector giving the posterior median of which intercept component
     (group) each data point is in.}
@@ -110,7 +111,7 @@
 
 \references{
     Lee, D and Sarran, C  (2015). Controlling for unmeasured confounding and spatial 
-    misalignment in long-term air pollution and health studies, Environmetrics, to appear.
+    misalignment in long-term air pollution and health studies, Environmetrics, 26, 477-487.
 
     Rushworth, A., D. Lee, and R. Mitchell (2014). A spatio-temporal model for estimating
     the long-term effects of air pollution on respiratory hospital admissions in Greater
@@ -133,8 +134,8 @@ x.easting <- 1:10
 x.northing <- 1:10
 Grid <- expand.grid(x.easting, x.northing)
 K <- nrow(Grid)
-T <- 10
-N.all <- T * K
+N <- 10
+N.all <- N * K
     
 #### set up spatial neighbourhood matrix W
 W <-array(0, c(K,K))
@@ -153,18 +154,18 @@ Q.W <- 0.99 * (diag(apply(W, 2, sum)) - W) + 0.01 * diag(rep(1,K))
 Q.W.inv <- solve(Q.W)
 phi.temp <- mvrnorm(n=1, mu=rep(0,K), Sigma=(0.1 * Q.W.inv))
 phi <- phi.temp
-    for(i in 2:T)
+    for(i in 2:N)
     {
     phi.temp2 <- mvrnorm(n=1, mu=(0.8 * phi.temp), Sigma=(0.1 * Q.W.inv))
     phi.temp <- phi.temp2
     phi <- c(phi, phi.temp)
     }
-jump <- rep(c(rep(3, 70), rep(4, 30)),T)
+jump <- rep(c(rep(2, 70), rep(4, 30)),N)
 LP <- jump + phi
 fitted <- exp(LP)
 Y <- rpois(n=N.all, lambda=fitted)
 
 #### Run the model     
-\dontrun{model1 <- ST.CARlocalised(formula=Y~1, family="poisson", G=3, W=W, burnin=10000,
+\dontrun{model <- ST.CARlocalised(formula=Y~1, family="poisson", G=3, W=W, burnin=10000,
 n.sample=50000)}
 }

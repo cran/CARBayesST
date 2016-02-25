@@ -24,17 +24,18 @@ Fit a spatio-temporal generalised linear mixed model to data with a spatio-tempo
 \usage{
 ST.CARadaptive(formula, family, data=NULL, trials=NULL, W, burnin, n.sample, thin=1,  
 prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.tau2=NULL, 
-prior.zeta2 = NULL, verbose=TRUE, rhofix = NULL, epsilon = 0)
+rhofix = NULL, epsilon = 0, verbose=TRUE) 
 }
+
 
 \arguments{
   \item{formula}{
         A formula for the covariate part of the model using the syntax of the
         lm() function. Offsets can be included here using the offset() function. 
-        The response and each covariate should be vectors of length (KT)*1, where
-        K is the number of spatial units and T is the number of time periods. Each
+        The response and each covariate should be vectors of length (KN)*1, where
+        K is the number of spatial units and N is the number of time periods. Each
         vector should be ordered so that the first K data points are the set of all
-        K spatial locations at time 1, the next K are the set of spatial points for
+        K spatial locations at time 1, the next K are the set of spatial locations for
         time 2 and so on.
     }
     \item{family}{
@@ -65,7 +66,7 @@ prior.zeta2 = NULL, verbose=TRUE, rhofix = NULL, epsilon = 0)
     }
     \item{thin}{
         The level of thinning to apply to the McMC samples to reduce their temporal 
-        autocorrelation. Defaults to 1.
+        autocorrelation. Defaults to 1 (no thinning).
     }  
     \item{prior.mean.beta}{
         A vector of prior means for the regression parameters beta (Gaussian priors are 
@@ -84,19 +85,17 @@ prior.zeta2 = NULL, verbose=TRUE, rhofix = NULL, epsilon = 0)
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
         prior for the random effect variance tau2. Defaults to c(0.001, 0.001).  
     }
-  \item{prior.zeta2}{
-        The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
-        prior for the second level adjacency random effect variance zeta2. Defaults to 
-        c(0.001, 0.001).  
+    \item{rhofix}{
+        Value between 0 and 1 at which to fix the spatial correlation parameter.  Setting rhofix=1, 
+        reduces the random effects prior to the intrinsic CAR model but does require epsilon>0.
+        When set to NULL, (the default) the parameter is estimated with a uniform[0,1] prior.
+    }
+    \item{epsilon}{
+        Diagonal ridge parameter to add to the random effects prior precision matrix, only required when 
+        rhofix = 1, and the prior precision is improper.  Defaults to 0.
     }
     \item{verbose}{
         Logical, should the function update the user on its progress.  
-    }
-    \item{rhofix}{
-        Value between 0 and 1 at which to fix the spatial correlation parameter.  Setting to 1, reduces the random effects prior to the intrinsic CAR model. When set to NULL, (the default) the parameter is estimated with a uniform[0,1] prior.
-    }
-    \item{epsilon}{
-        Diagonal ridge parameter to add to the random effects prior precision, only required when rhofix = 1, and the prior precision is improper.  Defaults to 0.
     }
 }
 
@@ -106,14 +105,15 @@ prior.zeta2 = NULL, verbose=TRUE, rhofix = NULL, epsilon = 0)
     \item{fitted.values }{A vector of fitted values for each area and time period.}
     \item{residuals }{A vector of residuals for each area and time period.}
     \item{modelfit }{Model fit criteria including the Deviance Information Criterion 
-        (DIC), the effective number of parameters in the model (p.d), and the Log 
-        Marginal Predictive Likelihood (LMPL).}
+(DIC) and its corresponding estimated effective number of parameters (p.d), the Log 
+Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Criterion 
+(WAIC) and its corresponding estimated number of effective parameters (p.w).}
     \item{accept }{The acceptance probabilities for the parameters.}
-    \item{localised.structure }{A list with 2 K*K matrices, Wmn and W99 summarising the 
-        estimated adjacency relationships. Wmn contains the posterior median for each w_ij 
-        element estimated in the model for adjacent areal units, while W99 contains 
-        Prob(w_ij < 0.5|data). For both matrices, elements corresponding to non-adjacent 
-        pairs of areas have NA values.}
+    \item{localised.structure }{A list with 2 K*K matrices, Wmedian and W99 summarising the 
+        estimated adjacency relationships. Wmedian contains the posterior median for each w_ij 
+        element estimated in the model for adjacent areal units, while W99 contains binary
+        indicator variables for whether Prob(w_ij < 0.5|data)>0.99. For both matrices, 
+        elements corresponding to non-adjacent pairs of areas have NA values.}
     \item{formula }{The formula for the covariate and offset part of the model.}
     \item{model }{A text string describing the model fit.}
     \item{X }{The design matrix of covariates.}
@@ -123,7 +123,8 @@ prior.zeta2 = NULL, verbose=TRUE, rhofix = NULL, epsilon = 0)
 
 
 \references{
-Rushworth, A., Lee, D., and Sarran, C.  An adaptive spatio-temporal smoothing model for estimating trends and step changes in disease risk (2014) arXiv:1411.0924
+Rushworth, A., Lee, D., and Sarran, C.  An adaptive spatio-temporal smoothing model for 
+estimating trends and step changes in disease risk (2014) arXiv:1411.0924
 }
 
 \author{
@@ -142,8 +143,8 @@ x.easting <- 1:10
 x.northing <- 1:10
 Grid <- expand.grid(x.easting, x.northing)
 K <- nrow(Grid)
-T <- 10
-N.all <- T * K
+N <- 10
+N.all <- N * K
     
 #### set up spatial neighbourhood matrix W
 W <-array(0, c(K,K))
@@ -162,18 +163,18 @@ Q.W <- 0.99 * (diag(apply(W, 2, sum)) - W) + 0.01 * diag(rep(1,K))
 Q.W.inv <- solve(Q.W)
 phi.temp <- mvrnorm(n=1, mu=rep(0,K), Sigma=(0.1 * Q.W.inv))
 phi <- phi.temp
-    for(i in 2:T)
+    for(i in 2:N)
     {
     phi.temp2 <- mvrnorm(n=1, mu=(0.8 * phi.temp), Sigma=(0.1 * Q.W.inv))
     phi.temp <- phi.temp2
     phi <- c(phi, phi.temp)
     }
-jump <- rep(c(rep(3, 70), rep(4, 30)),T)
+jump <- rep(c(rep(2, 70), rep(4, 30)),N)
 LP <- jump + phi
 fitted <- exp(LP)
 Y <- rpois(n=N.all, lambda=fitted)
 
 #### Run the model     
-\dontrun{model1 <- ST.CARadaptive(formula=Y~1, family="poisson", W=W, burnin=10000,
+\dontrun{model <- ST.CARadaptive(formula=Y~1, family="poisson", W=W, burnin=10000,
 n.sample=50000)}
 }

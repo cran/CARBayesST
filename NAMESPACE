@@ -16,3 +16,10 @@ import(Rcpp)
 import(stats)
 importFrom(coda, mcmc, geweke.diag, effectiveSize)
 importFrom(utils, setTxtProgressBar, txtProgressBar)
+importFrom(spdep, mat2listw, n.comp.nb)
+
+
+
+
+
+

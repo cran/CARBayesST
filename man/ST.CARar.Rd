@@ -14,25 +14,30 @@
     autoregressive time series process, where spatial autocorrelation is modelled via the
     precision matrix. This precision matrix comes from the conditional autoregressive (CAR) 
     prior proposed by Leroux et al. (1999), and the full model was proposed by Rushworth et al.
-    (2014). Further details are given in the vignette accompanying this package. Inference is 
-    conducted in a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
+    (2014).  Missing values are allowed in the response in this model. Further details are 
+    given in the vignette accompanying this package. Inference is conducted in a Bayesian 
+    setting using Markov chain Monte Carlo (McMC) simulation. 
 }
+
+
 
 \usage{
     ST.CARar(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample, thin=1, 
     prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.tau2=NULL,
-    verbose=TRUE)
+    fix.rho.S=FALSE, rho.S=NULL, fix.rho.T=FALSE, rho.T=NULL,verbose=TRUE)
 }
+
+
 %- maybe also 'usage' for other objects documented here.
 \arguments{
     \item{formula}{
         A formula for the covariate part of the model using the syntax of the
         lm() function. Offsets can be included here using the offset() function. 
-        The response and each covariate should be vectors of length (KT)*1, where
-        K is the number of spatial units and T is the number of time periods. Each
+        The response and each covariate should be vectors of length (KN)*1, where
+        K is the number of spatial units and N is the number of time periods. Each
         vector should be ordered so that the first K data points are the set of all
-        K spatial locations at time 1, the next K are the set of spatial points for
-        time 2 and so on.
+        K spatial locations at time 1, the next K are the set of spatial locations for
+        time 2 and so on. Missing values are allowed in the response.
     }
     \item{family}{
         One of either `binomial', `gaussian' or `poisson', which respectively specify a 
@@ -62,7 +67,7 @@
         }
         \item{thin}{
         The level of thinning to apply to the McMC samples to reduce their temporal 
-        autocorrelation. Defaults to 1.
+        autocorrelation. Defaults to 1 (no thinning).
         }
         \item{prior.mean.beta}{
         A vector of prior means for the regression parameters beta (Gaussian priors are 
@@ -77,14 +82,28 @@
         prior for the Gaussian error variance nu2. Defaults to c(0.001, 0.001) and only used if
         family=`Gaussian'.   
         }
-    \item{prior.tau2}{
+        \item{prior.tau2}{
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
         prior for the random effect variance tau2. Defaults to c(0.001, 0.001).  
-    }
-    \item{verbose}{
-        Logical, should the function update the user on its progress.  
-    }
         }
+        \item{fix.rho.S}{
+        Logical, should the spatial dependence parameter rho.S be fixed when fitting the model.  
+        }
+        \item{rho.S}{
+        If fix.rho.S=TRUE, then the value in the interval [0,1] that rho.S should be fixed to.
+        Not needed if fix.rho.S=FALSE.
+        }
+        \item{fix.rho.T}{
+        Logical, should the temporal dependence parameter rho.T be fixed when fitting the model.  
+        }
+        \item{rho.T}{
+        If fix.rho.T=TRUE, then the value in the interval [0,1] that rho.T should be fixed to.
+        Not needed if fix.rho.T=FALSE.
+        }
+        \item{verbose}{
+        Logical, should the function update the user on its progress.  
+        }
+    }
 
 
 \value{
@@ -93,8 +112,9 @@
     \item{fitted.values }{A vector of fitted values for each area and time period.}
     \item{residuals }{A vector of residuals for each area and time period.}
     \item{modelfit }{Model fit criteria including the Deviance Information Criterion 
-                     (DIC), the effective number of parameters in the model (p.d), and the Log 
-                     Marginal Predictive Likelihood (LMPL).}
+(DIC) and its corresponding estimated effective number of parameters (p.d), the Log 
+Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Criterion 
+(WAIC) and its corresponding estimated number of effective parameters (p.w).}
     \item{accept }{The acceptance probabilities for the parameters.}
     \item{localised.structure }{NULL, for compatability with the other models.}
     \item{formula }{The formula for the covariate and offset part of the model.}
@@ -130,8 +150,8 @@
     x.northing <- 1:10
     Grid <- expand.grid(x.easting, x.northing)
     K <- nrow(Grid)
-    T <- 10
-    N.all <- T * K
+    N <- 10
+    N.all <- N * K
     
     #### set up spatial neighbourhood matrix W
     W <-array(0, c(K,K))
@@ -153,7 +173,7 @@
     Q.W.inv <- solve(Q.W)
     phi.temp <- mvrnorm(n=1, mu=rep(0,K), Sigma=(0.1 * Q.W.inv))
     phi <- phi.temp
-        for(i in 2:T)
+        for(i in 2:N)
         {
         phi.temp2 <- mvrnorm(n=1, mu=(0.8 * phi.temp), Sigma=(0.1 * Q.W.inv))
         phi.temp <- phi.temp2
@@ -165,5 +185,6 @@
     Y <- rpois(n=N.all, lambda=mean)
     
     #### Run the model
-    \dontrun{model <- ST.CARar(formula=Y~x, family="poisson",  W=W, burnin=10000, n.sample=50000)}
+    \dontrun{model <- ST.CARar(formula=Y~x, family="poisson",  W=W, burnin=10000,
+    n.sample=50000, fix.rho.T=TRUE, rho.T=0)}
 }

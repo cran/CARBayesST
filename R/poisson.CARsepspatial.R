@@ -1,4 +1,4 @@
-poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, prior.sigma2=NULL, verbose=TRUE)
+poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, fix.rho.S=FALSE, rho.S=NULL, fix.rho.T=FALSE, rho.T=NULL, verbose=TRUE)
 {
   #### Check on the verbose option
   if(is.null(verbose)) verbose=TRUE     
@@ -63,25 +63,6 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   }
   
   
-  #### Response variable
-  Y <- model.response(frame)
-  
-  ## Check for errors
-  if(sum(is.na(Y))>0) stop("the response has missing 'NA' values.", call.=FALSE)
-  if(!is.numeric(Y)) stop("the response variable has non-numeric values.", call.=FALSE)
-  int.check <- N.all-sum(ceiling(Y)==floor(Y))
-  if(int.check > 0) stop("the respons variable has non-integer values.", call.=FALSE)
-  if(min(Y)<0) stop("the response variable has negative values.", call.=FALSE)
-  Y <- as.numeric(Y)
-  
-  #### Offset variable
-  offset <- try(model.offset(frame), silent=TRUE)
-  if(class(offset)=="try-error") stop("the offset is not numeric.", call.=FALSE)
-  if(is.null(offset))  offset <- rep(0,N.all)
-  if(sum(is.na(offset))>0) stop("the offset has missing 'NA' values.", call.=FALSE)
-  if(!is.numeric(offset)) stop("the offset variable has non-numeric values.", call.=FALSE)
-  
-  
   #### Format and check the neighbourhood matrix W
   if(!is.matrix(W)) stop("W is not a matrix.", call.=FALSE)
   K <- nrow(W)
@@ -95,21 +76,73 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   if(sum(W!=t(W))>0) stop("W is not symmetric.", call.=FALSE)
   
   
-  #### Specify the initial parameter values
-  beta <- glm(Y~X.standardised-1, offset=offset, family=poisson)$coefficients
+  #### Response variable
+  Y <- model.response(frame)
+  Y <- as.numeric(Y)
+  
+  which.miss <- as.numeric(!is.na(Y))
+  which.miss.mat <- matrix(which.miss, nrow=K, ncol=N, byrow=FALSE)
+  n.miss <- N.all - sum(which.miss)
+  
+  if(n.miss>0) stop("the response has missing 'NA' values.", call.=FALSE)
+  if(!is.numeric(Y)) stop("the response variable has non-numeric values.", call.=FALSE)
+  int.check <- N.all- n.miss - sum(ceiling(Y)==floor(Y), na.rm=TRUE)
+  if(int.check > 0) stop("the response variable has non-integer values.", call.=FALSE)
+  if(min(Y, na.rm=TRUE)<0) stop("the response variable has negative values.", call.=FALSE)
 
-  phi <- rnorm(N.all)
-  tau2 <- runif(N)
-  sig2 <- runif(1)
-  rho <- runif(1)
-  delta <- rnorm(N)
+
+  
+  #### Offset variable
+  offset <- try(model.offset(frame), silent=TRUE)
+  if(class(offset)=="try-error") stop("the offset is not numeric.", call.=FALSE)
+  if(is.null(offset))  offset <- rep(0,N.all)
+  if(sum(is.na(offset))>0) stop("the offset has missing 'NA' values.", call.=FALSE)
+  if(!is.numeric(offset)) stop("the offset variable has non-numeric values.", call.=FALSE)
+  
+  
+
+  
+  
+  #### Specify the initial parameter values
+  mod.glm <- glm(Y~X.standardised-1, offset=offset, family="quasipoisson")
+  beta.mean <- mod.glm$coefficients
+  beta.sd <- sqrt(diag(summary(mod.glm)$cov.scaled))
+  beta <- rnorm(n=length(beta.mean), mean=beta.mean, sd=beta.sd)
+  
+  log.Y <- log(Y)
+  log.Y[Y==0] <- -0.1  
+  res.temp <- log.Y - X.standardised %*% beta - offset
+  res.sd <- sd(res.temp, na.rm=TRUE)/5
+  phi <- rnorm(n=N.all, mean=0, sd = res.sd)
+  phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)  
+  delta <- rnorm(n=N, mean=0, sd = res.sd)
+  tau2 <- apply(phi.mat, 2, var) / 10
+  sig2 <- var(delta)/10
+
+  if(fix.rho.S)
+  {
+      rho <- rho.S
+  }else
+  {
+      rho <- runif(1)       
+  }
+  
+  if(fix.rho.T)
+  {
+      lambda <- rho.T
+  }else
+  {
+      lambda <- runif(1)       
+  }   
+
+
   
   #### Check and specify the priors
   ## Put in default priors
   if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
   if(is.null(prior.var.beta)) prior.var.beta <- rep(1000, p)
   if(is.null(prior.tau2)) prior.tau2 <- c(0.001, 0.001)
-  if(is.null(prior.sigma2)) prior.sigma2 <- c(0.001, 0.001)
+
   
   if(length(prior.mean.beta)!=p) stop("the vector of prior means for beta is the wrong length.", call.=FALSE)    
   if(!is.numeric(prior.mean.beta)) stop("the vector of prior means for beta is not numeric.", call.=FALSE)    
@@ -124,10 +157,7 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   if(!is.numeric(prior.tau2)) stop("the prior value for tau2 is not numeric.", call.=FALSE)    
   if(sum(is.na(prior.tau2))!=0) stop("the prior value for tau2 has missing values.", call.=FALSE)   
   
-  if(length(prior.sigma2)!=2) stop("the prior value for sigma2 is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.sigma2)) stop("the prior value for sigma2 is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.sigma2))!=0) stop("the prior value for sigma2 has missing values.", call.=FALSE)   
-  
+
   #### Format and check the MCMC quantities
   if(is.null(burnin)) stop("the burnin argument is missing", call.=FALSE)
   if(is.null(n.sample)) stop("the n.sample argument is missing", call.=FALSE)
@@ -169,30 +199,47 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
     }
   }         
   
+  ## Check for errors on rho and fix.rho
+  if(!is.logical(fix.rho.S)) stop("fix.rho.S is not logical.", call.=FALSE)   
+  if(fix.rho.S & is.null(rho.S)) stop("rho.S is fixed but an initial value was not set.", call.=FALSE)   
+  if(fix.rho.S & !is.numeric(rho.S) ) stop("rho.S is not numeric.", call.=FALSE)  
+  if(rho<0 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
+  if(rho>1 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
   
+  ## Check for errors on rho and fix.rho
+  if(!is.logical(fix.rho.T)) stop("fix.rho.T is not logical.", call.=FALSE)   
+  if(fix.rho.T & is.null(rho.T)) stop("rho.T is fixed but an initial value was not set.", call.=FALSE)   
+  if(fix.rho.T & !is.numeric(rho.T) ) stop("rho.T is not numeric.", call.=FALSE)  
+  if(lambda<0 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
+  if(lambda>1 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
+
+    
   #### Set up matrices to store samples
   n.keep <- floor((n.sample - burnin)/thin)
   samples.beta <- array(NA, c(n.keep, p))
   samples.phi <- array(NA, c(n.keep, N.all))
   samples.tau2 <- array(NA, c(n.keep, N))
   samples.sig2 <- array(NA, c(n.keep, 1))
-  samples.rho <- array(NA, c(n.keep, 1))
+  if(!fix.rho.S) samples.rho <- array(NA, c(n.keep, 1))
+  if(!fix.rho.T) samples.lambda <- array(NA, c(n.keep, 1))
   samples.delta <- array(NA, c(n.keep, N))     
   samples.fitted <- array(NA, c(n.keep, N.all))
+  samples.like <- array(NA, c(n.keep, N.all))
   samples.deviance <- array(NA, c(n.keep, 1))
   
   
   #### Specify the Metropolis quantities
-  accept.all <- rep(0,8)
+  accept.all <- rep(0,10)
   accept <- accept.all
   proposal.sd.phi <- 0.1
   proposal.sd.rho <- 0.05
   proposal.sd.beta <- 0.01
   proposal.sd.delta <- 0.05
   proposal.corr.beta <- solve(t(X.standardised) %*% X.standardised)
-  chol.proposal.corr.beta <- chol(proposal.corr.beta)     
+  chol.proposal.corr.beta <- chol(proposal.corr.beta)
+  proposal.sd.lambda <- 0.02
   tau2.shape <- prior.tau2[1] + K/2
-  sig2.shape <- prior.sigma2[1] + (N-1)/2
+  sig2.shape <- prior.tau2[1] + N/2
   
   
   #### Spatial quantities
@@ -225,18 +272,85 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   
   
   ## Create the determinant     
-  Wstar <- diag(apply(W,1,sum)) - W
-  Wstar.eigen <- eigen(Wstar)
-  Wstar.val <- Wstar.eigen$values
-  det.Q.W <-  0.5 * sum(log((rho * Wstar.val + (1-rho))))    
+  if(!fix.rho.S) 
+  {
+      Wstar <- diag(apply(W,1,sum)) - W
+      Wstar.eigen <- eigen(Wstar)
+      Wstar.val <- Wstar.eigen$values
+      det.Q.W <-  0.5 * sum(log((rho * Wstar.val + (1-rho))))     
+  }else
+  {}
+  
+  
+  #### .T quantities
+  ## .T neighbourhood matrix
+  D <-array(0, c(N,N))
+  for(i in 1:N)
+  {
+      for(j in 1:N)
+      {
+          if(abs((i-j))==1)  D[i,j] <- 1 
+      }    
+  }
+  
+  
+  ## Create the triplet object
+  D.triplet <- c(NA, NA, NA)
+  for(i in 1:N)
+  {
+      for(j in 1:N)
+      {
+          if(D[i,j]>0)
+          {
+              D.triplet <- rbind(D.triplet, c(i,j, D[i,j]))     
+          }else{}
+      }
+  }
+  D.triplet <- D.triplet[-1, ]     
+  D.n.triplet <- nrow(D.triplet) 
+  D.triplet.sum <- tapply(D.triplet[ ,3], D.triplet[ ,1], sum)
+  D.neighbours <- tapply(D.triplet[ ,3], D.triplet[ ,1], length)
+  
+  
+  ## Create the start and finish points for W updating
+  D.begfin <- array(NA, c(N, 2))     
+  temp <- 1
+  for(i in 1:N)
+  {
+      D.begfin[i, ] <- c(temp, (temp + D.neighbours[i]-1))
+      temp <- temp + D.neighbours[i]
+  }
+  
+  
+  ## Create the determinant     
+  if(!fix.rho.T) 
+  {
+      Dstar <- diag(apply(D,1,sum)) - D
+      Dstar.eigen <- eigen(Dstar)
+      Dstar.val <- Dstar.eigen$values
+      det.Q.D <-  0.5 * sum(log((lambda * Dstar.val + (1-lambda))))    
+  }else
+  {} 
   
   
   #### Specify quantities that do not change
   offset.mat <- matrix(offset, nrow=K, ncol=N, byrow=FALSE) 
   regression.mat <- matrix(X.standardised %*% beta, nrow=K, ncol=N, byrow=FALSE)
   Y.mat <- matrix(Y, nrow=K, ncol=N, byrow=FALSE)
-  phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)  
+  Y.mat.trans <- t(Y.mat)
+  which.miss.mat.trans <- t(which.miss.mat)
   delta.mat <- matrix(delta, nrow=K, ncol=N, byrow=TRUE)
+  
+
+    ## Check for islands
+  W.list<- mat2listw(W)
+  W.nb <- W.list$neighbours
+  W.islands <- n.comp.nb(W.nb)
+  islands <- W.islands$comp.id
+  n.islands <- max(W.islands$nc)
+  n.island1 <- length(which(islands==1))
+  if(rho==1) tau2.shape <- prior.tau2[1] + 0.5 * (K-n.islands)   
+  if(lambda==1) sig2.shape <- prior.tau2[1] + 0.5 * (N-1)   
   
   
   ###########################
@@ -245,7 +359,7 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   ## Start timer
   if(verbose)
   {
-    cat("Collecting", n.sample, "samples\n", sep = " ")
+    cat("Generating", n.sample, "samples\n", sep = " ")
     progressBar <- txtProgressBar(style = 3)
     percentage.points<-round((1:100/100)*n.sample)
   }else
@@ -266,7 +380,7 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
     for(r in 1:n.beta.block)
     {
       proposal.beta[beta.beg[r]:beta.fin[r]] <- proposal[beta.beg[r]:beta.fin[r]]
-      prob <- poissonbetaupdate(X.standardised, N.all, p, beta, proposal.beta, offset.temp, Y, prior.mean.beta, prior.var.beta)
+      prob <- poissonbetaupdate(X.standardised, N.all, p, beta, proposal.beta, offset.temp, Y, prior.mean.beta, prior.var.beta, which.miss)
       if(prob > runif(1))
       {
         beta[beta.beg[r]:beta.fin[r]] <- proposal.beta[beta.beg[r]:beta.fin[r]]
@@ -288,8 +402,14 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
     temp1 <- poissonsrecarupdate(W.triplet, W.begfin, W.triplet.sum, K, N, phi.mat, rho, Y.mat, proposal.sd.phi, phi.offset, den.offset, tau2)
     phi.temp <- temp1[[1]]
     phi.mean <- apply(phi.temp,2,mean)
-    phi <- as.numeric(phi.temp) - kronecker(phi.mean, rep(1,K))
-    # phi <- as.numeric(phi.temp) - mean(as.numeric(phi.temp))
+    if(rho<1)
+    {
+        phi <- as.numeric(phi.temp) - kronecker(phi.mean, rep(1,K))
+    }else
+    {
+        phi.temp[which(islands==1), ] <- phi.temp[which(islands==1), ] - matrix(kronecker(phi.mean, rep(1,n.island1)), ncol=N, byrow=F) 
+        phi <- as.numeric(phi.temp)
+    }
     phi.mat <- matrix(phi, nrow=K, ncol=N, byrow=FALSE)
     accept[3] <- accept[3] + temp1[[2]]
     accept[4] <- accept[4] + K*N    
@@ -298,12 +418,12 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
     #####################
     ## Samples from delta
     #####################
-    offset.delta <- offset.mat + regression.mat + phi.mat
-    delta.list <- poissondeltaupdate(X.standardised, K, N, delta, offset.delta, Y.mat, sig2, proposal.sd.delta)
-    delta.temp <- delta.list[[1]]
-    delta <- delta.temp - mean(delta.temp)
+    delta.offset <- t(offset.mat + regression.mat + phi.mat)
+    temp2 <- poissoncarupdate(D.triplet, D.begfin, D.triplet.sum, N, delta, sig2, Y.mat.trans, proposal.sd.delta, lambda, delta.offset, K, rep(1,K), which.miss.mat.trans)
+    delta <- temp2[[1]]
+    delta <- delta - mean(delta)
     delta.mat <- matrix(delta, nrow = K, ncol = N, byrow = TRUE)
-    accept[7] <- accept[7] + delta.list[[2]]
+    accept[7] <- accept[7] + temp2[[2]]
     accept[8] <- accept[8] + N
     
     
@@ -317,14 +437,16 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
     ####################
     ## Samples from sig2
     ####################
-    sig.temp <- sigquadformcompute(N, delta)
-    sig2.scale <- sig.temp + prior.sigma2[2] 
-    sig2 <- 1 / rgamma(1, sig2.shape, scale=(1/sig2.scale)) 
+    temp2.delta <- quadform(D.triplet, D.triplet.sum, D.n.triplet, N, delta, delta, lambda)
+    sig2.scale <- temp2.delta + prior.tau2[2] 
+    sig2 <- 1 / rgamma(1, sig2.shape, scale=(1/sig2.scale))
     
     
     ##################
     ## Sample from rho
     ##################
+    if(!fix.rho.S)
+    {
     temp3 <- rhoquadformcompute(W.triplet, W.triplet.sum, W.n.triplet, K, N, phi.mat, rho, tau2)
     proposal.rho <- rtrunc(n=1, spec="norm", a=0, b=1, mean=rho, sd=proposal.sd.rho)
     temp4 <- rhoquadformcompute(W.triplet, W.triplet.sum, W.n.triplet, K, N, phi.mat, proposal.rho, tau2)
@@ -341,6 +463,36 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
     {
     }
     accept[6] <- accept[6] + 1
+    }else
+    {}
+    
+    
+    
+    #####################
+    ## Sample from lambda
+    #####################
+    if(!fix.rho.T)
+    {
+        proposal.lambda <- rtrunc(n=1, spec="norm", a=0, b=1, mean=lambda, sd=proposal.sd.lambda)   
+        temp3 <- quadform(D.triplet, D.triplet.sum, D.n.triplet, N, delta, delta, proposal.lambda)
+        det.Q.proposal <- 0.5 * sum(log((proposal.lambda * Dstar.val + (1-proposal.lambda))))              
+        logprob.current <- det.Q.D - temp2.delta / sig2
+        logprob.proposal <- det.Q.proposal - temp3 / sig2
+        prob <- exp(logprob.proposal - logprob.current)
+        
+        #### Accept or reject the proposal
+        if(prob > runif(1))
+        {
+            lambda <- proposal.lambda
+            det.Q.D <- det.Q.proposal
+            accept[9] <- accept[9] + 1           
+        }else
+        {
+        }              
+        accept[10] <- accept[10] + 1           
+    }else
+    {}
+    
     
     
     #########################
@@ -348,7 +500,8 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
     #########################
     fitted <- as.numeric(exp(offset.mat + regression.mat + phi.mat + delta.mat))
     deviance.all <- dpois(x=as.numeric(Y), lambda=fitted, log=TRUE)
-    deviance <- -2 * sum(deviance.all) 
+    like <- exp(deviance.all)
+    deviance <- -2 * sum(deviance.all, na.rm=TRUE)    
 
     
     ###################
@@ -359,12 +512,14 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
       ele <- (j - burnin) / thin
       samples.beta[ele, ] <- beta
       samples.phi[ele, ] <- as.numeric(phi)
-      samples.rho[ele, ] <- rho
+      if(!fix.rho.S) samples.rho[ele, ] <- rho
+      if(!fix.rho.T) samples.lambda[ele, ] <- lambda
       samples.tau2[ele, ] <- tau2
       samples.sig2[ele, ] <- sig2
       samples.delta[ele, ] <- delta
       samples.deviance[ele, ] <- deviance
       samples.fitted[ele, ] <- fitted
+      samples.like[ele, ] <- like
     }else
     {
     }
@@ -380,28 +535,31 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
       accept.beta <- 100 * accept[1] / accept[2]
       accept.phi <- 100 * accept[3] / accept[4]
       accept.rho <- 100 * accept[5] / accept[6]
+      if(is.na(accept.rho)) accept.rho <- 45
       accept.delta <- 100 * accept[7] / accept[8]
+      accept.lambda <- 100 * accept[9] / accept[10]
+      if(is.na(accept.lambda)) accept.lambda <- 45
       accept.all <- accept.all + accept
-      accept <- rep(0,8)
+      accept <- rep(0,10)
       
       #### phi tuning parameter
       if(accept.phi > 50)
       {
-        proposal.sd.phi <- 2 * proposal.sd.phi
+          proposal.sd.phi <- proposal.sd.phi + 0.1 * proposal.sd.phi
       }else if(accept.phi < 40)              
       {
-        proposal.sd.phi <- 0.5 * proposal.sd.phi
+          proposal.sd.phi <- proposal.sd.phi - 0.1 * proposal.sd.phi
       }else
       {
-      }
+      } 
       
       #### beta tuning parameter
       if(accept.beta > 40)
       {
-        proposal.sd.beta <- 2 * proposal.sd.beta
+          proposal.sd.beta <- proposal.sd.beta + 0.1 * proposal.sd.beta
       }else if(accept.beta < 20)              
       {
-        proposal.sd.beta <- 0.5 * proposal.sd.beta
+          proposal.sd.beta <- proposal.sd.beta - 0.1 * proposal.sd.beta
       }else
       {
       }
@@ -409,25 +567,35 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
       #### rho tuning parameter
       if(accept.rho > 50)
       {
-        proposal.sd.rho <- 2 * min(proposal.sd.rho, 0.5)
+          proposal.sd.rho <- min(proposal.sd.rho + 0.1 * proposal.sd.rho, 0.5)
       }else if(accept.rho < 40)              
       {
-        proposal.sd.rho <- 0.5 * proposal.sd.rho
+          proposal.sd.rho <- proposal.sd.rho - 0.1 * proposal.sd.rho
       }else
       {
-      }     
-      
+      }
+      #### lambda tuning parameter
+      if(accept.lambda > 50)
+      {
+          proposal.sd.lambda <- min(proposal.sd.lambda + 0.1 * proposal.sd.lambda, 0.5)
+      }else if(accept.lambda < 40)              
+      {
+          proposal.sd.lambda <- proposal.sd.lambda - 0.1 * proposal.sd.lambda
+      }else
+      {
+      }         
       #### delta tuning parameter
       if(accept.delta > 50)
       {
-        proposal.sd.delta <- 2 * proposal.sd.delta
+          proposal.sd.delta <- proposal.sd.delta + 0.1 * proposal.sd.delta
       }else if(accept.delta < 40)              
       {
-        proposal.sd.delta <- 0.5 * proposal.sd.delta
+          proposal.sd.delta <- proposal.sd.delta - 0.1 * proposal.sd.delta
       }else
       {
-      }      
-    }
+      }    
+    }else
+    {}
     
     
     ################################       
@@ -454,22 +622,46 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   ## Compute the acceptance rates
   accept.beta <- 100 * accept.all[1] / accept.all[2]
   accept.phi <- 100 * accept.all[3] / accept.all[4]
-  accept.rho <- 100 * accept.all[5] / accept.all[6]
   accept.delta <- 100 * accept.all[7] / accept.all[8]
-  accept.final <- c(accept.beta, accept.phi, accept.rho, accept.delta)
-  names(accept.final) <- c("beta", "phi", "rho", "delta")
+
+
+  if(!fix.rho.S)
+  {
+      accept.rho <- 100 * accept.all[5] / accept.all[6]
+  }else
+  {
+      accept.rho <- NA    
+  }
+  
+  if(!fix.rho.T)
+  {
+      accept.lambda <- 100 * accept.all[9] / accept.all[10]
+  }else
+  {
+      accept.lambda <- NA    
+  }
   
   
-  ## Compute information criterion (DIC, DIC3, WAIC)
+   accept.final <- c(accept.beta, accept.phi, accept.delta, accept.rho, accept.lambda)
+  names(accept.final) <- c("beta", "phi", "delta", "rho.S", "rho.T")
+  
+  
+ ## Compute information criterion (DIC, DIC3, WAIC)
   median.beta <- apply(samples.beta,2,median)
   regression.mat <- matrix(X.standardised %*% median.beta, nrow=K, ncol=N, byrow=FALSE)   
   median.phi <- matrix(apply(samples.phi, 2, median), nrow=K, ncol=N)
   median.delta <- apply(samples.delta,2,median)
   delta.mat <- matrix(median.delta, nrow=K, ncol=N, byrow=TRUE)
   fitted.median <- as.numeric(exp(offset.mat + median.phi + regression.mat + delta.mat))
-  deviance.fitted <- -2 * sum(dpois(x=as.numeric(Y), lambda=fitted.median, log=TRUE))
+  deviance.fitted <- -2 * sum(dpois(x=as.numeric(Y), lambda=fitted.median, log=TRUE), na.rm=TRUE)
   p.d <- median(samples.deviance) - deviance.fitted
   DIC <- 2 * median(samples.deviance) - deviance.fitted     
+  
+  #### Watanabe-Akaike Information Criterion (WAIC)
+  LPPD <- sum(log(apply(samples.like,2,mean)), na.rm=TRUE)
+  p.w <- sum(apply(log(samples.like),2,var), na.rm=TRUE)
+  WAIC <- -2 * (LPPD - p.w)
+  
   
   ## Compute the LMPL
   CPO <- rep(NA, N.all)
@@ -477,7 +669,7 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   {
     CPO[j] <- 1/median((1 / dpois(x=Y[j], lambda=samples.fitted[ ,j])))  
   }
-  LMPL <- sum(log(CPO))  
+  LMPL <- sum(log(CPO), na.rm=TRUE)  
   
   
   ## Create the Fitted values
@@ -521,31 +713,64 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   rownames(summary.beta) <- colnames(X)
   colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
   
-  summary.hyper <- array(NA, c(2 + (2*N), 7))    
+  summary.hyper <- array(NA, c(3 + N, 7))    
   for (tt in  1:N) {
     summary.hyper[tt,1:3] <- quantile(samples.tau2[, tt], c(0.5, 0.025, 0.975))
     summary.hyper[tt, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.tau2[, tt])), geweke.diag(mcmc(samples.tau2[, tt]))$z) 
   }
   summary.hyper[N+1,1:3] <- quantile(samples.sig2, c(0.5, 0.025, 0.975))
   summary.hyper[N+1, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.sig2)), geweke.diag(mcmc(samples.sig2))$z)  
-  summary.hyper[N+2,1:3] <- quantile(samples.rho, c(0.5, 0.025, 0.975))
-  summary.hyper[N+2, 4:7] <- c(n.keep, accept.rho, effectiveSize(mcmc(samples.rho)), geweke.diag(mcmc(samples.rho))$z)   
-  for (tt in 1:N) {
-    summary.hyper[N+2+tt, 1:3] <- quantile(samples.delta[, tt], c(0.5, 0.025, 0.975))
-    summary.hyper[N+2+tt, 4:7] <- c(n.keep, accept.delta, effectiveSize(mcmc(samples.delta[, tt])), geweke.diag(mcmc(samples.delta[, tt]))$z)  
+  
+  if(!fix.rho.S)
+  {
+      summary.hyper[N+2, 1:3] <- quantile(samples.rho, c(0.5, 0.025, 0.975))
+      summary.hyper[N+2, 4:7] <- c(n.keep, accept.rho, effectiveSize(samples.rho), geweke.diag(samples.rho)$z)
+  }else
+  {
+      summary.hyper[N+2, 1:3] <- c(rho, rho, rho)
+      summary.hyper[N+2, 4:7] <- rep(NA, 4)
   }
-  rownames(summary.hyper) <- c(paste("tau2.", c(1:N), sep = ""), "sig2", "rho", paste("delta.", c(1:N), sep = ""))  
+  
+  if(!fix.rho.T)
+  {
+      summary.hyper[N+3, 1:3] <- quantile(samples.lambda, c(0.5, 0.025, 0.975))
+      summary.hyper[N+3, 4:7] <- c(n.keep, accept.lambda, effectiveSize(samples.lambda), geweke.diag(samples.lambda)$z)
+  }else
+  {
+      summary.hyper[N+3, 1:3] <- c(lambda, lambda, lambda)
+      summary.hyper[N+3, 4:7] <- rep(NA, 4)
+  }    
+
+rownames(summary.hyper) <- c(paste("tau2.", c(1:N), sep = ""), "tau2.T", "rho.S","rho.T")  
   summary.results <- rbind(summary.beta, summary.hyper)
   summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
   summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
   
   
   ## Compile and return the results
-  modelfit <- c(DIC, p.d, LMPL)
-  names(modelfit) <- c("DIC", "p.d", "LMPL")
-  samples <- list(beta=mcmc(samples.beta.orig), phi=mcmc(samples.phi),  rho=mcmc(samples.rho), tau2=mcmc(samples.tau2), sig2=mcmc(samples.sig2),
+  modelfit <- c(DIC, p.d, WAIC, p.w, LMPL)
+  names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL")
+  
+  if(fix.rho.S & fix.rho.T)
+  {
+      samples.rhoext <- NA
+  }else if(fix.rho.S & !fix.rho.T)
+  {
+      samples.rhoext <- samples.lambda
+      names(samples.rhoext) <- "rho.T"
+  }else if(!fix.rho.S & fix.rho.T)
+  {
+      samples.rhoext <- samples.rho  
+      names(samples.rhoext) <- "rho.S"
+  }else
+  {
+      samples.rhoext <- cbind(samples.rho, samples.lambda)
+      colnames(samples.rhoext) <- c("rho.S", "rho.T")
+  }
+
+    samples <- list(beta=mcmc(samples.beta.orig), phi=mcmc(samples.phi),  rho=mcmc(samples.rhoext), tau2=mcmc(samples.tau2), tau2.T=mcmc(samples.sig2),
                   delta=mcmc(samples.delta), fitted=mcmc(samples.fitted))
-  model.string <- c("Likelihood model - Poisson (log link function)", "\nLatent structure model - A random walk time trend with separate spatial effects\n")
+  model.string <- c("Likelihood model - Poisson (log link function)", "\nLatent structure model - An overall time trend with temporal specific spatial effects\n")
   results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=NULL, formula=formula, model=model.string,  X=X)
   class(results) <- "carbayesST"
   if(verbose)

@@ -24,7 +24,6 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     if(!is.matrix(W)) stop("W is not a matrix.", call.=FALSE)
     K <- nrow(W)
     if(ncol(W)!= K) stop("W has the wrong number of columns.", call.=FALSE)
-    if(floor(N.all/K)!=ceiling(N.all/K)) stop("The number of spatial areas is not a multiple of the number of data points.", call.=FALSE)
     if(sum(is.na(W))>0) stop("W has missing 'NA' values.", call.=FALSE)
     if(!is.numeric(W)) stop("W has non-numeric values.", call.=FALSE)
     if(min(W)<0) stop("W has negative elements.", call.=FALSE)
@@ -36,13 +35,15 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     Y <- model.response(frame)
     N.all <- length(Y)
     N <- N.all / K
+    which.miss <- as.numeric(!is.na(Y))
+    which.miss.mat <- matrix(which.miss, nrow=K, ncol=N, byrow=FALSE)
+
+    if(floor(N.all/K)!=ceiling(N.all/K)) stop("The number of spatial areas is not a multiple of the number of data points.", call.=FALSE)
     if(sum(is.na(Y))>0) stop("the response has missing 'NA' values.", call.=FALSE)
     if(!is.numeric(Y)) stop("the response variable has non-numeric values.", call.=FALSE)
     int.check <- N.all-sum(ceiling(Y)==floor(Y))
     if(int.check > 0) stop("the respons variable has non-integer values.", call.=FALSE)
     if(min(Y)<0) stop("the response variable has negative values.", call.=FALSE)
-    log.Y <- log(Y)
-    log.Y[Y==0] <- -0.1     
     Y.mat <- matrix(Y, nrow=K, ncol=N, byrow=FALSE) 
     
     
@@ -104,10 +105,13 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
         }
         
         ## Compute a starting value for beta
-        beta <- glm(Y~X.standardised-1, offset=offset, family=poisson)$coefficients
+        mod.glm <- glm(Y~X.standardised-1, offset=offset, family="quasipoisson")
+        beta.mean <- mod.glm$coefficients
+        beta.sd <- sqrt(diag(summary(mod.glm)$cov.scaled))
+        beta <- rnorm(n=length(beta.mean), mean=beta.mean, sd=beta.sd)
         regression.vec <- X.standardised %*% beta
-        regression.mat <- matrix(regression.vec, nrow=K, ncol=N, byrow=FALSE)   
-    }
+        regression.mat <- matrix(regression.vec, nrow=K, ncol=N, byrow=FALSE)           
+     }
     
     
     #### Format and check the number of clusters G     
@@ -169,16 +173,21 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     
     
     #### Specify the initial parameter values
+    log.Y <- log(Y)
+    log.Y[Y==0] <- -0.1   
     res.temp <- log.Y - regression.vec - offset
+    res.sd <- sd(res.temp, na.rm=TRUE)/5
+    phi.mat <- matrix(rnorm(n=N.all, mean=0, sd = res.sd), nrow=K, byrow=FALSE)
+    tau2 <- var(phi)/10
+    gamma <- runif(1)
     Z <- sample(1:G, size=N.all, replace=TRUE)
-    lambda <- sort(runif(G, min=min(res.temp), max=max(res.temp)))
     Z.mat <- matrix(Z, nrow=K, ncol=N, byrow=FALSE)
+    lambda <- sort(runif(G, min=min(res.temp), max=max(res.temp)))
+    lambda.mat <- matrix(rep(lambda, N), nrow=N, byrow=TRUE)
     delta <- runif(1,1, min(2, prior.delta))
     mu <- matrix(lambda[Z], nrow=K, ncol=N, byrow=FALSE)
-    lambda.mat <- matrix(rep(lambda, N), nrow=N, byrow=TRUE)
-    phi.mat <- matrix(rnorm(n=N.all, mean=0, sd = sd(res.temp)/2), nrow=K, byrow=FALSE)
-    tau2 <- runif(1, min=0, max=var(res.temp))
-    gamma <- runif(1)
+    
+
     
     
     ## Compute the blocking structure for beta     
@@ -220,6 +229,7 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     samples.phi <- array(NA, c(n.keep, N.all))
     samples.fitted <- array(NA, c(n.keep, N.all))
     samples.deviance <- array(NA, c(n.keep, 1))
+    samples.like <- array(NA, c(n.keep, N.all))
     
     if(!is.null(X))
     {
@@ -279,7 +289,7 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     ## Start timer
     if(verbose)
     {
-        cat("Collecting", n.sample, "samples\n", sep = " ")
+        cat("Generating", n.sample, "samples\n", sep = " ")
         progressBar <- txtProgressBar(style = 3)
         percentage.points<-round((1:100/100)*n.sample)
     }else
@@ -302,7 +312,7 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
             for(r in 1:n.beta.block)
             {
                 proposal.beta[beta.beg[r]:beta.fin[r]] <- proposal[beta.beg[r]:beta.fin[r]]
-                prob <- poissonbetaupdate(X.standardised, N.all, p, beta, proposal.beta, offset.temp, Y, prior.mean.beta, prior.var.beta)
+                prob <- poissonbetaupdate(X.standardised, N.all, p, beta, proposal.beta, offset.temp, Y, prior.mean.beta, prior.var.beta, which.miss)
                 if(prob > runif(1))
                 {
                     beta[beta.beg[r]:beta.fin[r]] <- proposal.beta[beta.beg[r]:beta.fin[r]]
@@ -394,7 +404,7 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
         #### Sample from phi
         ####################
         phi.offset <- mu + offset.mat + regression.mat
-        temp1 <- poissonarcarupdate(W.triplet, W.begfin, W.triplet.sum,  K, N, phi.mat, tau2, gamma, 1, Y.mat, proposal.sd.phi, phi.offset, W.triplet.sum)      
+        temp1 <- poissonarcarupdate(W.triplet, W.begfin, W.triplet.sum,  K, N, phi.mat, tau2, gamma, 1, Y.mat, proposal.sd.phi, phi.offset, W.triplet.sum, which.miss.mat)      
         phi.temp <- temp1[[1]]
         phi <- as.numeric(phi.temp)
         for(i in 1:G)
@@ -429,10 +439,13 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
         #########################
         ## Calculate the deviance
         #########################
-        fitted <- as.numeric(exp(mu + offset.mat + regression.mat + phi.mat))           
-        deviance <- -2 * sum(dpois(x=as.numeric(Y), lambda=fitted, log=TRUE))
+        lp <- as.numeric(mu + offset.mat + regression.mat + phi.mat)  
+        fitted <- exp(lp)
+        deviance.all <- dpois(x=as.numeric(Y), lambda=fitted, log=TRUE)
+        like <- exp(deviance.all)
+        deviance <- -2 * sum(deviance.all, na.rm=TRUE)  
         
-        
+ 
         
         ###################
         ## Save the results
@@ -448,7 +461,7 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
             samples.gamma[ele, ] <- gamma
             samples.deviance[ele, ] <- deviance
             samples.fitted[ele, ] <- fitted
-            
+            samples.like[ele, ] <- like
             if(!is.null(X)) samples.beta[ele, ] <- beta        
         }else
         {
@@ -470,13 +483,13 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
                 accept.beta <- 100 * accept[7] / accept[8]
                 if(accept.beta > 40)
                 {
-                    proposal.sd.beta <- 2 * proposal.sd.beta
+                    proposal.sd.beta <- proposal.sd.beta + 0.1 * proposal.sd.beta
                 }else if(accept.beta < 20)              
                 {
-                    proposal.sd.beta <- 0.5 * proposal.sd.beta
+                    proposal.sd.beta <- proposal.sd.beta - 0.1 * proposal.sd.beta
                 }else
                 {
-                }    
+                }   
                 accept.all <- accept.all + accept
                 accept <- rep(0,8)
             }else
@@ -491,10 +504,10 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
             #### lambda tuning parameter
             if(accept.lambda > 40)
             {
-                proposal.sd.lambda <- min(2 * proposal.sd.lambda, 10)
+                proposal.sd.lambda <- min(proposal.sd.lambda + 0.1 * proposal.sd.lambda, 10)
             }else if(accept.lambda < 20)              
             {
-                proposal.sd.lambda <- 0.5 * proposal.sd.lambda
+                proposal.sd.lambda <- proposal.sd.lambda - 0.1 * proposal.sd.lambda
             }else
             {
             }
@@ -503,10 +516,10 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
             #### delta tuning parameter               
             if(accept.delta > 50)
             {
-                proposal.sd.delta <- min(2 * proposal.sd.delta, 10)
+                proposal.sd.delta <- min(proposal.sd.delta + 0.1 * proposal.sd.delta, 10)
             }else if(accept.delta < 40)              
             {
-                proposal.sd.delta <- 0.5 * proposal.sd.delta
+                proposal.sd.delta <- proposal.sd.delta - 0.1 * proposal.sd.delta
             }else
             {
             }         
@@ -515,10 +528,10 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
             #### phi tuning parameter
             if(accept.phi > 50)
             {
-                proposal.sd.phi <- 2 * proposal.sd.phi
+                proposal.sd.phi <- proposal.sd.phi + 0.1 * proposal.sd.phi
             }else if(accept.phi < 40)              
             {
-                proposal.sd.phi <- 0.5 * proposal.sd.phi
+                proposal.sd.phi <- proposal.sd.phi - 0.1 * proposal.sd.phi
             }else
             {
             }
@@ -553,16 +566,16 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     accept.lambda <- 100 * accept.all[1] / accept.all[2]
     accept.delta <- 100 * accept.all[3] / accept.all[4]
     accept.phi <- 100 * accept.all[5] / accept.all[6]
-    
+    accept.gamma <- 100
     if(!is.null(X))
     {
         accept.beta <- 100 * accept.all[7] / accept.all[8]   
-        accept.final <- c(accept.beta, accept.lambda, accept.delta, accept.phi)
-        names(accept.final) <- c("beta", "lambda", "delta", "phi")   
+        accept.final <- c(accept.beta, accept.lambda, accept.delta, accept.phi, accept.gamma)
+        names(accept.final) <- c("beta", "lambda", "delta", "phi", "rho.T")   
     }else
     {
-        accept.final <- c(accept.lambda,  accept.delta, accept.phi)
-        names(accept.final) <- c("lambda", "delta", "phi")   
+        accept.final <- c(accept.lambda,  accept.delta, accept.phi, accept.gamma)
+        names(accept.final) <- c("lambda", "delta", "phi", "rho.T")   
     }
     
     
@@ -585,6 +598,11 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     deviance.fitted <- -2 * sum(dpois(x=as.numeric(Y), lambda=fitted.median, log=TRUE))
     p.d <- median(samples.deviance) - deviance.fitted
     DIC <- 2 * median(samples.deviance) - deviance.fitted     
+    
+    #### Watanabe-Akaike Information Criterion (WAIC)
+    LPPD <- sum(log(apply(samples.like,2,mean)), na.rm=TRUE)
+    p.w <- sum(apply(log(samples.like),2,var), na.rm=TRUE)
+    WAIC <- -2 * (LPPD - p.w)
     
     ## Compute the LMPL
     CPO <- rep(NA, N.all)
@@ -629,7 +647,7 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     summary.hyper[1,1:3] <- quantile(samples.delta, c(0.5, 0.025, 0.975))
     summary.hyper[2,1:3] <- quantile(samples.tau2, c(0.5, 0.025, 0.975))
     summary.hyper[3,1:3] <- quantile(samples.gamma, c(0.5, 0.025, 0.975))
-    rownames(summary.hyper) <- c("delta", "tau2", "gamma")      
+    rownames(summary.hyper) <- c("delta", "tau2", "rho.T")      
     summary.hyper[1, 4:7] <- c(n.keep, accept.delta, effectiveSize(mcmc(samples.delta)), geweke.diag(mcmc(samples.delta))$z)   
     summary.hyper[2, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.tau2)), geweke.diag(mcmc(samples.tau2))$z)   
     summary.hyper[3, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.gamma)), geweke.diag(mcmc(samples.gamma))$z)   
@@ -647,7 +665,7 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
         summary.beta <- t(apply(samples.beta.orig, 2, quantile, c(0.5, 0.025, 0.975))) 
         summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.beta,p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
         rownames(summary.beta) <- colnames(X)
-        colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept")
+        colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
         summary.results <- rbind(summary.beta, summary.lambda, summary.hyper)    
     }else
     {
@@ -661,16 +679,11 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     
     
     ## Compile and return the results
-    modelfit <- c(DIC, p.d, LMPL)
-    names(modelfit) <- c("DIC", "p.d",  "LMPL")
-    if(!is.null(X))
-    {
-        samples <- list(beta=mcmc(samples.beta.orig), lambda=mcmc(samples.lambda),  Z=mcmc(samples.Z), delta=mcmc(samples.delta), phi = mcmc(samples.phi), tau2=mcmc(samples.tau2), gamma=mcmc(samples.gamma), fitted=mcmc(samples.fitted))
-    }else
-    {
-        samples <- list(lambda=mcmc(samples.lambda),  Z=mcmc(samples.Z), delta=mcmc(samples.delta), phi = mcmc(samples.phi), tau2=mcmc(samples.tau2), gamma=mcmc(samples.gamma), fitted=mcmc(samples.fitted))
-    }
-    
+    modelfit <- c(DIC, p.d, WAIC, p.w, LMPL)
+    names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL")
+    if(is.null(X)) samples.beta.orig = NA
+       
+    samples <- list(beta=mcmc(samples.beta.orig), lambda=mcmc(samples.lambda),  Z=mcmc(samples.Z), delta=mcmc(samples.delta), phi = mcmc(samples.phi), tau2=mcmc(samples.tau2), rho.T=mcmc(samples.gamma), fitted=mcmc(samples.fitted))
     model.string <- c("Likelihood model - Poisson (log link function)", "\nLatent structure model - Localised autoregressive CAR model\n")
     results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=median.Z, formula=formula, model=model.string,  X=X)
     class(results) <- "carbayesST"

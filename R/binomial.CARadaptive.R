@@ -1,4 +1,4 @@
-binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, prior.zeta2 = NULL, verbose = TRUE, rhofix = NULL, epsilon = NULL)
+binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, rhofix = NULL, epsilon = 0, verbose = TRUE)
     { 
   #### Check on the verbose option
   if(is.null(verbose))     verbose = TRUE     
@@ -28,6 +28,7 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   # get summaries of the model matrix
   p       <- ncol(X)
   y       <- model.response(frame)
+  which.miss <- as.numeric(!is.na(y))
   n.sites <- as.integer(nrow(W))
   n.time  <- as.integer(length(y)/n.sites)
   k       <- as.integer(round(n.sites*n.time, 0))
@@ -48,11 +49,6 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   if(length(prior.tau2)!=2) stop("the prior value for tau2 is the wrong length.", call.=FALSE)    
   if(!is.numeric(prior.tau2)) stop("the prior value for tau2 is not numeric.", call.=FALSE)    
   if(sum(is.na(prior.tau2))!=0) stop("the prior value for tau2 has missing values.", call.=FALSE)    
-  
-  if(is.null(prior.zeta2)) prior.zeta2 <- c(0.001, 0.001)
-  if(length(prior.zeta2)!=2) stop("the prior value for zeta2 is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.zeta2)) stop("the prior value for zeta2 is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.zeta2))!=0) stop("the prior value for zeta2 has missing values.", call.=FALSE)    
   
   # identify and error check the offset term, if it exists.
   offset <- try(model.offset(frame), silent=TRUE)
@@ -146,8 +142,9 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   # for the prior ICAR precision for phi.  Associated with these is the triplet form tripList.
   # get the cholesky of Q.space, and its determinant
   # if rho is not fixed, then ridge must be fixed
-  rho                     <- ifelse(!is.null(rhofix), rhofix, 1)
+  rho                     <- ifelse(!is.null(rhofix), rhofix, 0.99)
   fixedridge              <- epsilon
+  if(rho==1) fixedridge <- 0.0001
   tripList                <- vector("list", length = 2)
   tripList[[1]]           <- cbind(1:nrow(W_current), 1:nrow(W_current), rowSums(W_current) + fixedridge)
   tripList[[2]]           <- cbind(rbind(locs, locs[,2:1]), -rep(inv_logit(v), 2))
@@ -182,24 +179,29 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   
   # MCMC parameter starting values
   phi_tune      <- 0.5
-  beta_tune     <- 0.01
   W.tune        <- 1
   rho.tune      <- 0.1
   tau_v         <- 200
   prior.max.tau <- 1000
   increment     <- 0
-  glm_mod       <- glm(y/trials ~-1+X.standardised, family = "binomial", weights = trials, offset = offset)
-  beta_par      <- glm_mod$coefficients
-  res.glm       <- residuals(glm_mod)
-  phi           <- rnorm(k, mean=0, sd=sd(res.glm))
-  tau           <- runif(n=1, min=0.5*var(res.glm), max=2*var(res.glm))
+  glm_mod       <- glm(y/trials ~-1+X.standardised, family = "quasibinomial", weights = trials, offset = offset)
+  beta.mean <- glm_mod$coefficients
+  beta.sd <- sqrt(diag(summary(glm_mod)$cov.scaled))
+  beta_par      <- rnorm(n=length(beta.mean), mean=beta.mean, sd=beta.sd)
+  
+  theta.hat <- y / trials
+  theta.hat[theta.hat==0] <- 0.01
+  theta.hat[theta.hat==1] <- 0.99
+  res.temp <- log(theta.hat / (1 - theta.hat)) - X.standardised %*% beta_par - offset
+  res.sd <- sd(res.temp, na.rm=TRUE)/5
+  phi <- rnorm(n=k, mean=0, sd = res.sd)
+  tau <- var(phi)/10
   phiQphi       <- qform_ST(Qspace = Q.space.trip, Qtime = Q.time.trip, phi = phi, nsites = n.sites) 
   XB            <- X.standardised %*% beta_par
-  tau_v.shape   <- (n.edges/2) +  prior.zeta2[1]
+  tau_v.shape   <- (n.edges/2) +  prior.tau2[1]
   tau_phi_shape <- (n.sites*n.time/2) + prior.tau2[1]
   # general MCMC housekeeping
-  thin          <- thin - 1
-  n.save        <- ifelse(thin == 0, (n.sample - burnin), (n.sample - burnin)/thin)
+  n.save        <- ifelse(thin == 1, (n.sample - burnin), (n.sample - burnin) / thin)
   accept.all    <- rep(0, 8)
   accept        <- accept.all
   # storage of parameters in the MCMC, 
@@ -208,6 +210,7 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   samples.tau2  <- samples.deviance <- samples.vtau2 <- samples.alpha <- samples.rho <- matrix(0, n.save, 1)
   samples.v     <- matrix(0, ncol = n.edges, nrow = c(n.save, n.sites*n.time))
   samples.fit   <- array(NA, c(n.save, n.sites * n.time))  
+  samples.like <- array(NA, c(n.save, n.sites*n.time))
   
   
   # turn off spam check options to speed things up (a bit)
@@ -247,7 +250,7 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   
   ## Start timer
   if(verbose){
-    cat("Collecting", n.sample, "samples\n", sep = " ")
+    cat("Generating", n.sample, "samples\n", sep = " ")
     progressBar            <- txtProgressBar(style = 3)
     percentage.points      <- round((1:100/100)*n.sample)
   } else percentage.points <- round((1:100/100)*n.sample)     
@@ -261,16 +264,6 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     # START ITERATING, ONLY SAVE thin^th ITERATION
     save.iter <- j > burnin && ((j %% thin == 0) | thin == 0)
     if(save.iter) increment <- increment+1
-    
-    # adjust the acceptance rate if required
-    if(j %% 200 == 0){
-      beta_tune   <- ifelse(accept[1] / accept[2] > 0.4,  2 * beta_tune, 0.5 * beta_tune)
-      phi_tune    <- ifelse(accept[3] / accept[4] > 0.4,  2 * phi_tune,  0.5 * phi_tune)
-      W.tune      <- ifelse(accept[7] / accept[8] > 0.4,  2 * W.tune,    0.5 * W.tune)
-      rho.tune    <- ifelse(accept[5] / accept[6] > 0.4,  2 * rho.tune,  0.5 * rho.tune)
-      accept.all  <- accept.all + accept
-      accept      <- accept*0
-    }
     
     # update ALPHA
     if(n.time > 1){
@@ -288,7 +281,7 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     }
     
     # Gibbs update of tau_v
-    tau_scale  <- vqform_current/2 + prior.zeta2[2]
+    tau_scale  <- vqform_current/2 + prior.tau2[2]
     tau_v      <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_v.shape, scale=(1/tau_scale))
     v.proposal <- rtrunc(n = n.edges, spec="norm", a=-15, b=15,  mean = v, sd = W.tune)
     for(i in 1:n.blocks){
@@ -338,7 +331,7 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     for(r in 1:n.beta.block){
       proposal.beta[beta.beg[r]:beta.fin[r]] <- proposal[beta.beg[r]:beta.fin[r]]
       prob <- binomialbetaupdate(X=X.standardised, nsites=k, p=p, beta=beta_par, proposal=proposal.beta, 
-                                offset=offset.temp, y=y, failures=failures, prior_meanbeta=prior.mean.beta, prior_varbeta=prior.var.beta)
+                                offset=offset.temp, y=y, failures=failures, prior_meanbeta=prior.mean.beta, prior_varbeta=prior.var.beta, which.miss)
       if(prob > runif(1)){
         beta_par[beta.beg[r]:beta.fin[r]] <- proposal.beta[beta.beg[r]:beta.fin[r]]
         accept[1] <- accept[1] + 1  
@@ -391,11 +384,16 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     phiQphi    <- qform_ST(Qspace = Q.space.trip, Qtime = Q.time.trip, phi = phi, nsites = n.sites)     
     tau_scale  <- phiQphi/2 + prior.tau2[2]
     tau        <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_phi_shape, scale=(1/tau_scale))
+    
     # calculate the deviance
-    prob         <- (1/(1 + exp( - as.numeric(X.standardised %*% beta_par) - phi)))
+    lp <- as.vector(XB) + phi + offset
+    prob <- exp(lp) / (1+exp(lp))
     fitted       <- prob*trials
     deviance.all <- dbinom(x=y, size=trials, prob=prob, log=TRUE)
+    like <- exp(deviance.all)
     dev          <- -2 * sum(deviance.all)   
+    
+
     
     # save samples if past burnin 
     if(save.iter){
@@ -408,7 +406,70 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
       samples.v[increment,]         <- v
       samples.alpha[increment,]     <- alpha
       samples.rho[increment,]       <- rho
+      samples.like[increment, ] <- like
     }
+    
+    # adjust the acceptance rate if required
+    if(j %% 100 == 0){
+        accept.beta <- 100 * accept[1] / accept[2]
+        accept.phi <- 100 * accept[3] / accept[4]
+        accept.w <- 100 * accept[7] / accept[8]
+        if(is.null(rhofix))
+        {
+            accept.rho <- 100 * accept[5] / accept[6]     
+        }else
+        {
+            accept.rho <- 45 
+        }
+        
+        #### beta tuning parameter
+        if(accept.beta > 40)
+        {
+            proposal.sd.beta <- proposal.sd.beta + 0.1 * proposal.sd.beta
+        }else if(accept.beta < 20)              
+        {
+            proposal.sd.beta <- proposal.sd.beta - 0.1 * proposal.sd.beta
+        }else
+        {
+        }
+        
+        #### phi tuning parameter
+        if(accept.phi > 50)
+        {
+            phi_tune <- phi_tune + 0.1 * phi_tune
+        }else if(accept.phi < 40)              
+        {
+            phi_tune <- phi_tune - 0.1 * phi_tune
+        }else
+        {
+        }       
+        
+        #### w tuning parameter
+        if(accept.w > 40)
+        {
+            W.tune <- W.tune + 0.1 * W.tune
+        }else if(accept.w < 20)              
+        {
+            W.tune <- W.tune - 0.1 * W.tune
+        }else
+        {
+        }   
+        
+        #### rho tuning parameter
+        if(accept.rho > 50)
+        {
+            rho.tune <- min(rho.tune + 0.1 * rho.tune, 0.5)
+        }else if(accept.rho < 40)              
+        {
+            rho.tune <- rho.tune - 0.1 * rho.tune
+        }else
+        {
+        }  
+        accept.all         <- accept.all + accept
+        accept             <- accept*0
+    }else
+    {}
+    
     
     # print progress to the console
     if(j %in% percentage.points & verbose) setTxtProgressBar(progressBar, j/n.sample)
@@ -426,8 +487,18 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   accept.rho <- 100 * accept.all[5] / accept.all[6]
   accept.w     <- 100 * accept.all[7] / accept.all[8]
   accept.alpha <- 100
-  accept.final <- c(accept.beta, accept.phi, accept.rho,accept.w)
-  names(accept.final) <- c("beta", "phi", "rho", "w")
+
+  if(!is.null(rhofix))
+  {
+      accept.final <- c(accept.beta, accept.phi, accept.w)
+      names(accept.final) <- c("beta", "phi", "w")  
+  }else
+  {
+      accept.final <- c(accept.beta, accept.phi, accept.rho,accept.w)
+      names(accept.final) <- c("beta", "phi", "rho", "w")  
+  }
+  
+
   
   # ## Compute information criterion (DIC, DIC3, WAIC)
   median.beta        <- apply(samples.beta, 2, median)
@@ -439,7 +510,14 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   p.d <- median(samples.deviance) - deviance.fitted
   DIC <- 2 * median(samples.deviance) - deviance.fitted     
   
-  ## Compute the LMPL
+  
+  #### Watanabe-Akaike Information Criterion (WAIC)
+  LPPD <- sum(log(apply(samples.like,2,mean)), na.rm=TRUE)
+  p.w <- sum(apply(log(samples.like),2,var), na.rm=TRUE)
+  WAIC <- -2 * (LPPD - p.w)
+  
+
+    ## Compute the LMPL
   CPO <- rep(NA, (n.sites * n.time))
   for(j in 1:(n.sites * n.time))
   {
@@ -484,12 +562,17 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   summary.hyper[2,1:3]    <- quantile(samples.rho, c(0.5, 0.025, 0.975))
   summary.hyper[3,1:3]    <- quantile(samples.alpha, c(0.5, 0.025, 0.975))
   summary.hyper[4,1:3]    <- quantile(samples.vtau2, c(0.5, 0.025, 0.975))
-  rownames(summary.hyper) <- c("tau2", "rho", "gamma", "zeta2")     
+  rownames(summary.hyper) <- c("tau2", "rho.S", "rho.T", "tau2.w")    
   summary.hyper[1, 4:7]   <- c(n.save, 100, effectiveSize(mcmc(samples.tau2)), geweke.diag(mcmc(samples.tau2))$z)     
   summary.hyper[2, 4:7]   <- c(n.save, accept.rho, effectiveSize(mcmc(samples.rho)), geweke.diag(mcmc(samples.rho))$z)   
   summary.hyper[3, 4:7]   <- c(n.save, accept.alpha, effectiveSize(mcmc(samples.alpha)), geweke.diag(mcmc(samples.alpha))$z)   
   summary.hyper[4, 4:7]   <- c(n.save, 100, effectiveSize(mcmc(samples.vtau2)), geweke.diag(mcmc(samples.vtau2))$z)  
-   
+  
+  if(!is.null(rhofix))
+  {
+      summary.hyper[2, ] <- c(rep(rhofix, 3),rep(NA, 4))    
+  }
+  
   summary.results         <- rbind(summary.beta, summary.hyper)  
   summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
   summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
@@ -503,25 +586,32 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   Wmn <- W99      <- matrix(NA, nrow = n.sites, ncol = n.sites)
   W99[locs]       <- bdry99
   Wmn[locs]       <- bdryMN
-  for(i in 1:n.sites){
-    for(j in 1:n.sites){
-      if(j>i){
-        W99[j,i] <- W99[i,j] 
-        Wmn[j,i] <- Wmn[i,j]
-      }    
-    }
+  W99[locs]       <- bdry99
+  W99[locs[ ,c(2,1)]] <- bdry99
+  Wmn[locs]       <- bdryMN
+  Wmn[locs[ ,c(2,1)]] <- bdryMN    
+  
+  ## Compile and return the results
+  modelfit <- c(DIC, p.d, WAIC, p.w, LMPL)
+  names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL")
+  model.string    <- c("Likelihood model - Binomial (logit link function)", 
+                       "\nLatent structure model - Adaptive autoregressive CAR model\n")
+  samples.tau2all <- cbind(samples.tau2, samples.vtau2)
+  colnames(samples.tau2all) <- c("tau2", "tau2.w")
+  if(is.null(rhofix))
+  {
+      samples.rhoext <- cbind(samples.rho, samples.alpha)
+      colnames(samples.rhoext) <- c("rho.S", "rho.T")
+  }else
+  {
+      samples.rhoext <- cbind(samples.alpha)
+      names(samples.rhoext) <- c("rho.T")
   }
   
   
-  ## Compile and return the results
-  modelfit        <- c(DIC, p.d, LMPL)
-  names(modelfit) <- c("DIC", "p.d", "LMPL")
-  model.string    <- c("Likelihood model - Poisson (log link function)", 
-                       "\nLatent structure model - Adaptive autoregressive CAR model\n")
-  samples         <- list(beta = mcmc(samples.beta.orig), phi = mcmc(samples.phi), rho = mcmc(samples.rho), 
-                          tau2 = mcmc(samples.tau2), gamma=mcmc(samples.alpha), zeta2 = mcmc(samples.vtau2), 
-                          samples.w = samples.w, fitted = mcmc(samples.fit))  
-  localised.structure <- list(Wmn = Wmn, W99 = W99)
+  samples         <- list(beta = mcmc(samples.beta.orig), phi = mcmc(samples.phi), rho = mcmc(samples.rhoext), 
+                          tau2 = mcmc(samples.tau2all), w = mcmc(samples.w), fitted = mcmc(samples.fit))  
+  localised.structure <- list(Wmedian = Wmn, W99 = W99)
   results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=localised.structure,  formula=formula, model=model.string, X=X)
   
   class(results) <- "carbayesST"

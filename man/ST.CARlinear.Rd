@@ -13,25 +13,29 @@
     covariates and an area specific linear time trend. The intercepts and slopes are spatially
     autocorrelated and modelled by the conditional autoregressive (CAR) prior proposed by Leroux
     et al. (1999). The model is similar to that proposed by Bernardinelli et al. (1995) and 
-    further details are given in the vignette accompanying this package. Inference is conducted 
-    in a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
+    further details are given in the vignette accompanying this package. Missing values are 
+    allowed in the response in this model. Inference is conducted in a Bayesian setting using 
+    Markov chain Monte Carlo (McMC) simulation. 
 }
 
 \usage{
     ST.CARlinear(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample, thin=1, 
     prior.mean.beta=NULL, prior.var.beta=NULL, prior.mean.alpha=NULL, 
-    prior.var.alpha=NULL, prior.nu2=NULL, prior.tau2=NULL, verbose=TRUE)
+    prior.var.alpha=NULL, prior.nu2=NULL, prior.tau2=NULL, fix.rho.slo=FALSE, 
+    rho.slo=NULL, fix.rho.int=FALSE, rho.int=NULL,verbose=TRUE)
 }
+
+
 %- maybe also 'usage' for other objects documented here.
 \arguments{
     \item{formula}{
         A formula for the covariate part of the model using the syntax of the
         lm() function. Offsets can be included here using the offset() function. 
-        The response and each covariate should be vectors of length (KT)*1, where
-        K is the number of spatial units and T is the number of time periods. Each
+        The response and each covariate should be vectors of length (KN)*1, where
+        K is the number of spatial units and N is the number of time periods. Each
         vector should be ordered so that the first K data points are the set of all
-        K spatial locations at time 1, the next K are the set of spatial points for
-        time 2 and so on.
+        K spatial locations at time 1, the next K are the set of spatial locations for
+        time 2 and so on. Missing values are allowed in the response.
     }
     \item{family}{
         One of either `binomial', `gaussian' or `poisson', which respectively specify a 
@@ -61,7 +65,7 @@
     }
     \item{thin}{
         The level of thinning to apply to the McMC samples to reduce their temporal 
-        autocorrelation. Defaults to 1.
+        autocorrelation. Defaults to 1 (no thinning).
     }
     \item{prior.mean.beta}{
         A vector of prior means for the regression parameters beta (Gaussian priors are 
@@ -72,12 +76,12 @@
         are assumed). Defaults to a vector with values 1000.
     } 
     \item{prior.mean.alpha}{
-        The prior mean for the average slope of the linear time trend alpha (Gaussian priors are 
-        assumed). Defaults to  zero.
+        The prior mean for the average slope of the linear time trend alpha (a Gaussian prior
+        is assumed). Defaults to  zero.
     }
     \item{prior.var.alpha}{
-        The prior variance for the average slope of the linear time trend alpha (Gaussian priors 
-        are assumed). Defaults to 1000.
+        The prior variance for the average slope of the linear time trend alpha (a Gaussian 
+        prior is assumed). Defaults to 1000.
     }  
     \item{prior.nu2}{
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
@@ -88,6 +92,22 @@
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
         prior for the random effect variances tau2. Defaults to c(0.001, 0.001).  
     }
+    \item{fix.rho.slo}{
+        Logical, should the spatial dependence parameter for the slope of the linear time trend
+        rho.slo be fixed when fitting the model.  
+    }
+    \item{rho.slo}{
+        If fix.rho.slo=TRUE, then the value in the interval [0,1] that rho.slo should be fixed to.
+        Not needed if fix.rho.slo=FALSE.
+    }
+    \item{fix.rho.int}{
+        Logical, should the spatial dependence parameter for the intercept surface rho.int
+        be fixed when fitting the model.      
+        }
+    \item{rho.int}{
+        If fix.rho.int=TRUE, then the value in the interval [0,1] that rho.int should be fixed to.
+        Not needed if fix.rho.int=FALSE.
+    }
     \item{verbose}{
         Logical, should the function update the user on its progress.  
     }
@@ -96,14 +116,13 @@
 
 \value{
     \item{summary.results }{A summary table of the parameters.}
-    \item{samples }{A list containing the McMC samples from the model. The `tau2' element
-                    of this list has columns (tau2.phi, tau2.delta. Similarly, the `rho' 
-                    element of this list has columns (rho.phi, rho.delta).}
+    \item{samples }{A list containing the McMC samples from the model.}
     \item{fitted.values }{A vector of fitted values for each area and time period.}
     \item{residuals }{A vector of residuals for each area and time period.}
     \item{modelfit }{Model fit criteria including the Deviance Information Criterion 
-                     (DIC), the effective number of parameters in the model (p.d), and the Log 
-                    Marginal Predictive Likelihood (LMPL).}
+(DIC) and its corresponding estimated effective number of parameters (p.d), the Log 
+Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Criterion 
+(WAIC) and its corresponding estimated number of effective parameters (p.w).}
     \item{accept }{The acceptance probabilities for the parameters.}
     \item{localised.structure }{NULL, for compatability with the other models.}
     \item{formula }{The formula for the covariate and offset part of the model.}
@@ -138,8 +157,8 @@ x.easting <- 1:10
 x.northing <- 1:10
 Grid <- expand.grid(x.easting, x.northing)
 K <- nrow(Grid)
-T <- 10
-N.all <- K * T
+N <- 10
+N.all <- K * N
 
 #### set up spatial neighbourhood matrix W
 W <-array(0, c(K,K))
@@ -160,8 +179,8 @@ Q.W <- 0.99 * (diag(apply(W, 2, sum)) - W) + 0.01 * diag(rep(1,K))
 Q.W.inv <- solve(Q.W)
 phi <- mvrnorm(n=1, mu=rep(0,K), Sigma=(0.1 * Q.W.inv))
 delta <- mvrnorm(n=1, mu=rep(0,K), Sigma=(0.1 * Q.W.inv))
-trend <- array(NA, c(K, T))
-time <-(1:T - mean(1:T))/T
+trend <- array(NA, c(K, N))
+time <-(1:N - mean(1:N))/N
     for(i in 1:K)
     {
     trend[i, ] <- phi[i] + delta[i] * time        

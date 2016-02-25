@@ -14,27 +14,29 @@
     main effects and a spatio-temporal interaction.  The spatial and temporal main effects are
     modelled by the conditional autoregressive (CAR) prior proposed by Leroux et al. (1999),
     while the spatio-temporal interaction random effects are independent. Due to the lack of 
-    identifiability of the interactions and the Gaussian errors, only main effects  are allowed
-    in the Gaussian model. The model is similar to that proposed by Knorr-Held (2000) and further
-    details are given in the vignette accompanying this package. Inference is conducted in a 
-    Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
+    identifiability between the interactions and the Gaussian errors, only main effects  are 
+    allowed in the Gaussian model. Missing values are allowed in the response in this model.
+    The model is similar to that proposed by Knorr-Held (2000) and further details are given 
+    in the vignette accompanying this package. Inference is conducted in a Bayesian setting 
+    using Markov chain Monte Carlo (McMC) simulation. 
 }
 
 \usage{
     ST.CARanova(formula, family, data=NULL,  trials=NULL, W, interaction=TRUE, burnin, 
                 n.sample, thin=1, prior.mean.beta=NULL, prior.var.beta=NULL,
-                prior.nu2=NULL, prior.tau2=NULL, verbose=TRUE)
+                prior.nu2=NULL, prior.tau2=NULL, fix.rho.S=FALSE, rho.S=NULL, 
+                fix.rho.T=FALSE, rho.T=NULL, verbose=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
     \item{formula}{
         A formula for the covariate part of the model using the syntax of the
         lm() function. Offsets can be included here using the offset() function. 
-        The response and each covariate should be vectors of length (KT)*1, where
-        K is the number of spatial units and T is the number of time periods. Each
+        The response and each covariate should be vectors of length (KN)*1, where
+        K is the number of spatial units and N is the number of time periods. Each
         vector should be ordered so that the first K data points are the set of all
-        K spatial locations at time 1, the next K are the set of spatial points for
-        time 2 and so on.
+        K spatial locations at time 1, the next K are the set of spatial locations for
+        time 2 and so on. Missing values are allowed in the response.
     }
     \item{family}{
         One of either `binomial', `gaussian' or `poisson', which respectively specify a 
@@ -69,7 +71,7 @@
     }
     \item{thin}{
         The level of thinning to apply to the McMC samples to reduce their temporal 
-        autocorrelation. Defaults to 1.
+        autocorrelation. Defaults to 1 (no thinning).
     }
     \item{prior.mean.beta}{
         A vector of prior means for the regression parameters beta (Gaussian priors are 
@@ -88,6 +90,20 @@
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
         prior for the random effect variances tau2. Defaults to c(0.001, 0.001).  
     }
+    \item{fix.rho.S}{
+        Logical, should the spatial dependence parameter rho.S be fixed when fitting the model.  
+    }
+    \item{rho.S}{
+        If fix.rho.S=TRUE, then the value in the interval [0,1] that rho.S should be fixed to.
+        Not needed if fix.rho.S=FALSE.
+    }
+    \item{fix.rho.T}{
+        Logical, should the temporal dependence parameter rho.T be fixed when fitting the model.  
+    }
+    \item{rho.T}{
+        If fix.rho.T=TRUE, then the value in the interval [0,1] that rho.T should be fixed to.
+        Not needed if fix.rho.T=FALSE.
+    }
     \item{verbose}{
         Logical, should the function update the user on its progress.  
     }
@@ -96,15 +112,13 @@
 
 \value{
     \item{summary.results }{A summary table of the parameters.}
-    \item{samples }{A list containing the McMC samples from the model. The `tau2' element
-                    of this list has columns (tau2.phi, tau2.delta, tau2.gamma) 
-                    (the latter if interaction=TRUE). Similarly, the `rho' element of this 
-                    list has columns (rho.phi, rho.delta).}
+    \item{samples }{A list containing the McMC samples from the model.}
     \item{fitted.values }{A vector of fitted values for each area and time period.}
     \item{residuals }{A vector of residuals for each area and time period.}
     \item{modelfit }{Model fit criteria including the Deviance Information Criterion 
-                     (DIC), the effective number of parameters in the model (p.d), and the Log 
-                    Marginal Predictive Likelihood (LMPL).}
+(DIC) and its corresponding estimated effective number of parameters (p.d), the Log 
+Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Criterion 
+(WAIC) and its corresponding estimated number of effective parameters (p.w).}
     \item{accept }{The acceptance probabilities for the parameters.}
     \item{localised.structure }{NULL, for compatability with the other models.}
     \item{formula }{The formula for the covariate and offset part of the model.}
@@ -138,8 +152,8 @@ x.easting <- 1:10
 x.northing <- 1:10
 Grid <- expand.grid(x.easting, x.northing)
 K <- nrow(Grid)
-T <- 10
-N.all <- T * K
+N <- 10
+N.all <- N * K
 
 #### set up spatial (W) and temporal (D) neighbourhood matrices
 W <-array(0, c(K,K))
@@ -152,10 +166,10 @@ W <-array(0, c(K,K))
 		}	
 	}
 	
-D <-array(0, c(T,T))
-for(i in 1:T)
+D <-array(0, c(N,N))
+for(i in 1:N)
 {
-    for(j in 1:T)
+    for(j in 1:N)
     {
         if(abs((i-j))==1)  D[i,j] <- 1 
     }	
@@ -172,12 +186,12 @@ Q.W <- 0.99 * (diag(apply(W, 2, sum)) - W) + 0.01 * diag(rep(1,K))
 Q.W.inv <- solve(Q.W)
 phi <- mvrnorm(n=1, mu=rep(0,K), Sigma=(0.01 * Q.W.inv))
 
-Q.D <- 0.99 * (diag(apply(D, 2, sum)) - D) + 0.01 * diag(rep(1,T))
+Q.D <- 0.99 * (diag(apply(D, 2, sum)) - D) + 0.01 * diag(rep(1,N))
 Q.D.inv <- solve(Q.D)
-delta <- mvrnorm(n=1, mu=rep(0,T), Sigma=(0.01 * Q.D.inv))
+delta <- mvrnorm(n=1, mu=rep(0,N), Sigma=(0.01 * Q.D.inv))
 
 
-phi.long <- rep(phi, T)
+phi.long <- rep(phi, N)
 delta.long <- kronecker(delta, rep(1,K))
 LP <- 4 +  x * beta + phi.long +  delta.long + gamma
 mean <- exp(LP)
@@ -186,5 +200,5 @@ Y <- rpois(n=N.all, lambda=mean)
 
 #### Run the model
 \dontrun{model <- ST.CARanova(formula=Y~x, family="poisson", interaction=TRUE, 
-W=W, burnin=10000, n.sample=50000)}
+W=W, burnin=10000, n.sample=50000, fix.rho.S=TRUE, rho.S=1)}
 }

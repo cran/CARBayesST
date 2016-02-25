@@ -3,28 +3,26 @@
 
 
 \title{
-    Fit a spatio-temporal generalised linear mixed model to data, with a temporal main
-    effect and separate spatial surfaces with individual variances.
+    Fit a spatio-temporal generalised linear mixed model to data, with a common 
+    temporal main effect and separate spatial surfaces with individual variances.
 }
 
 \description{
     Fit a spatio-temporal generalised linear mixed model to areal unit data, where the 
     response variable can be binomial or Poisson. The linear predictor is modelled by known 
-    covariates and two sets of random effects. The latter include a common temporal
-    main effect modelled by a first order random walk and separate spatial effects with a 
-    common spatial dependence parameter but separate variance parameters. Each spatial
-    effect is modelled by the conditional autoregressive (CAR) prior proposed by 
-    Leroux et al. (1999). Further details are given in the vignette accompanying this 
-    package. Inference is conducted in a Bayesian setting using Markov chain Monte Carlo 
-    (McMC) simulation. 
+    covariates and two sets of random effects. These include a common temporal main effect 
+    and separate time period specific spatial effects with a common spatial dependence 
+    parameter but separate variance parameters. Each component is modelled by the 
+    conditional autoregressive (CAR) prior proposed by Leroux et al. (1999). Further 
+    details are given in the vignette accompanying this package. Inference is conducted 
+    in a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
 }
 
 \usage{
     ST.CARsepspatial(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample,
-    thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, 
-    prior.sigma2=NULL, verbose=TRUE)
+    thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, fix.rho.S=FALSE, 
+    rho.S=NULL, fix.rho.T=FALSE, rho.T=NULL, verbose=TRUE)
 }
-
 
 
 
@@ -33,10 +31,10 @@
     \item{formula}{
         A formula for the covariate part of the model using the syntax of the
         lm() function. Offsets can be included here using the offset() function. 
-        The response and each covariate should be vectors of length (KT)*1, where
-        K is the number of spatial units and T is the number of time periods. Each
+        The response and each covariate should be vectors of length (KN)*1, where
+        K is the number of spatial units and N is the number of time periods. Each
         vector should be ordered so that the first K data points are the set of all
-        K spatial locations at time 1, the next K are the set of spatial points for
+        K spatial locations at time 1, the next K are the set of spatial locations for
         time 2 and so on.
     }
     \item{family}{
@@ -66,7 +64,7 @@
     }
     \item{thin}{
         The level of thinning to apply to the McMC samples to reduce their temporal 
-        autocorrelation. Defaults to 1.
+        autocorrelation. Defaults to 1 (no thinning).
     }
     \item{prior.mean.beta}{
         A vector of prior means for the regression parameters beta (Gaussian priors are 
@@ -76,15 +74,25 @@
         A vector of prior variances for the regression parameters beta (Gaussian priors 
         are assumed). Defaults to a vector with values 1000.
     }  
-        \item{prior.tau2}{
+    \item{prior.tau2}{
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
         prior for the random effect variances tau2. Defaults to c(0.001, 0.001).  
     }
-        \item{prior.sigma2}{
-        The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
-        prior for the temporal trend variance sigma2. Defaults to c(0.001, 0.001).   
+    \item{fix.rho.S}{
+        Logical, should the spatial dependence parameter rho.S be fixed when fitting the model.  
     }
-        \item{verbose}{
+    \item{rho.S}{
+        If fix.rho.S=TRUE, then the value in the interval [0,1] that rho.S should be fixed to.
+        Not needed if fix.rho.S=FALSE.
+    }
+    \item{fix.rho.T}{
+        Logical, should the temporal dependence parameter rho.T be fixed when fitting the model.  
+    }
+    \item{rho.T}{
+        If fix.rho.T=TRUE, then the value in the interval [0,1] that rho.T should be fixed to.
+        Not needed if fix.rho.T=FALSE.
+    }
+    \item{verbose}{
         Logical, should the function update the user on its progress.  
         }
     }
@@ -99,8 +107,9 @@
         \item{fitted.values }{A vector of fitted values for each area and time period.}
         \item{residuals }{A vector of residuals for each area and time period.}
         \item{modelfit }{Model fit criteria including the Deviance Information Criterion 
-        (DIC), the effective number of parameters in the model (p.d), and the Log 
-        Marginal Predictive Likelihood (LMPL).}
+(DIC) and its corresponding estimated effective number of parameters (p.d), the Log 
+Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Criterion 
+(WAIC) and its corresponding estimated number of effective parameters (p.w).}
         \item{accept }{The acceptance probabilities for the parameters.}
         \item{localised.structure }{NULL, for compatability with the other models.}
         \item{formula }{The formula for the covariate and offset part of the model.}
@@ -113,6 +122,11 @@
         areas: A new mixed model for spatial dependence, Chapter Statistical Models in 
         Epidemiology, the Environment and Clinical Trials, Halloran, M and Berry, D (eds),
         pp. 135-178. Springer-Verlag, New York.
+        
+        Napier, G, D. Lee, C. Robertson, A. Lawson, and K. Pollock (2016). A model to
+        estimate the impact of changes in MMR vaccination uptake on inequalities in
+        measles susceptibility in Scotland, Statistical Methods in Medical Research,
+        to appear.
         }
         
 \author{
@@ -131,10 +145,10 @@ x.easting <- 1:10
 x.northing <- 1:10
 Grid <- expand.grid(x.easting, x.northing)
 K <- nrow(Grid)
-T <- 5
-N.all <- T * K
+N <- 5
+N.all <- N * K
         
-#### set up spatial (W) and temporal (D) neighbourhood matrices
+#### set up a spatial (W) neighbourhood matrix
 W <-array(0, c(K,K))
     for(i in 1:K)
     {
