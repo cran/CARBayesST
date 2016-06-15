@@ -77,8 +77,7 @@ N <- N.all / K
 if(sum(is.na(W))>0) stop("W has missing 'NA' values.", call.=FALSE)
 if(!is.numeric(W)) stop("W has non-numeric values.", call.=FALSE)
 if(min(W)<0) stop("W has negative elements.", call.=FALSE)
-if(sum(W!=t(W))>0) stop("W is not symmetric.", call.=FALSE)
-if(min(apply(W, 1, sum))==0) stop("W has some areas with no neighbours (one of the row sums equals zero).", call.=FALSE)    
+if(!is.symmetric.matrix(W)) stop("W is not symmetric.", call.=FALSE)
 
 
 
@@ -101,7 +100,13 @@ offset <- try(model.offset(frame), silent=TRUE)
     if(!is.numeric(offset)) stop("the offset variable has non-numeric values.", call.=FALSE)
     
     
-    
+## Check for errors on rho and fix.rho
+if(!is.logical(fix.rho.int)) stop("fix.rho.int is not logical.", call.=FALSE)   
+if(fix.rho.int & is.null(rho.int)) stop("rho.int is fixed but an initial value was not set.", call.=FALSE)   
+if(fix.rho.int & !is.numeric(rho.int) ) stop("rho.S is not numeric.", call.=FALSE)  
+if(!is.logical(fix.rho.slo)) stop("fix.rho.slo is not logical.", call.=FALSE)   
+if(fix.rho.slo & is.null(rho.slo)) stop("rho.slo is fixed but an initial value was not set.", call.=FALSE)   
+if(fix.rho.slo & !is.numeric(rho.slo) ) stop("rho.slo is not numeric.", call.=FALSE)      
   
     
 #### Specify the initial parameter values
@@ -137,14 +142,31 @@ if(fix.rho.slo)
     lambda <- runif(1)       
 }   
 
+if(rho<0 ) stop("rho.int is outside the range [0, 1].", call.=FALSE)  
+if(rho>1 ) stop("rho.int is outside the range [0, 1].", call.=FALSE)  
+if(lambda<0 ) stop("rho.slo is outside the range [0, 1].", call.=FALSE)  
+if(lambda>1 ) stop("rho.slo is outside the range [0, 1].", call.=FALSE)  
+    
+if(fix.rho.int & rho==0 & fix.rho.slo & lambda==0)
+{
+    ## Set up a dummy W matrix to use in the code as it will not affect the results
+    W <- array(0, c(K,K))
+    for(r in 2:K)
+    {
+        W[(r-1), r] <- 1   
+        W[r, (r-1)] <- 1
+    }
+}else
+{
+    if(min(apply(W, 1, sum))==0) stop("W has some areas with no neighbours (one of the row sums equals zero).", call.=FALSE)    
+}
 
-    
-    
+
 #### Check and specify the priors
     if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
     if(is.null(prior.var.beta)) prior.var.beta <- rep(1000, p)
-    if(is.null(prior.tau2)) prior.tau2 <- c(0.001, 0.001)
-    if(is.null(prior.nu2)) prior.nu2 <- c(0.001, 0.001)
+    if(is.null(prior.tau2)) prior.tau2 <- c(1, 0.01)
+    if(is.null(prior.nu2)) prior.nu2 <- c(1, 0.01)
     if(is.null(prior.mean.alpha)) prior.mean.alpha <- rep(0, 1)
     if(is.null(prior.var.alpha)) prior.var.alpha <- rep(1000, 1)
     
@@ -190,22 +212,6 @@ if(fix.rho.slo)
     if(burnin!=round(burnin)) stop("burnin is not an integer.", call.=FALSE) 
     if(n.sample!=round(n.sample)) stop("n.sample is not an integer.", call.=FALSE) 
     if(thin!=round(thin)) stop("thin is not an integer.", call.=FALSE) 
-    
-    
-
-## Check for errors on rho and fix.rho
-if(!is.logical(fix.rho.int)) stop("fix.rho.int is not logical.", call.=FALSE)   
-if(fix.rho.int & is.null(rho.int)) stop("rho.int is fixed but an initial value was not set.", call.=FALSE)   
-if(fix.rho.int & !is.numeric(rho.int) ) stop("rho.S is not numeric.", call.=FALSE)  
-if(rho<0 ) stop("rho.int is outside the range [0, 1].", call.=FALSE)  
-if(rho>1 ) stop("rho.int is outside the range [0, 1].", call.=FALSE)  
-
-## Check for errors on rho and fix.rho
-if(!is.logical(fix.rho.slo)) stop("fix.rho.slo is not logical.", call.=FALSE)   
-if(fix.rho.slo & is.null(rho.slo)) stop("rho.slo is fixed but an initial value was not set.", call.=FALSE)   
-if(fix.rho.slo & !is.numeric(rho.slo) ) stop("rho.slo is not numeric.", call.=FALSE)  
-if(lambda<0 ) stop("rho.slo is outside the range [0, 1].", call.=FALSE)  
-if(lambda>1 ) stop("rho.slo is outside the range [0, 1].", call.=FALSE)  
 
 
 
@@ -268,11 +274,17 @@ temp <- 1
     
     
 ## Create the determinant     
-Wstar <- diag(apply(W,1,sum)) - W
-Wstar.eigen <- eigen(Wstar)
-Wstar.val <- Wstar.eigen$values
+if(!fix.rho.int | !fix.rho.slo) 
+{
+    Wstar <- diag(apply(W,1,sum)) - W
+    Wstar.eigen <- eigen(Wstar)
+    Wstar.val <- Wstar.eigen$values
+}else
+{}
+
 if(!fix.rho.int) det.Q.rho <-  0.5 * sum(log((rho * Wstar.val + (1-rho))))    
 if(!fix.rho.slo) det.Q.lambda <-  0.5 * sum(log((lambda * Wstar.val + (1-lambda))))     
+
     
     
 #### Specify quantities that do not change
@@ -315,7 +327,8 @@ data.precision.beta <- t(X.short) %*% X.short
 ## Start timer
     if(verbose)
     {
-        cat("Generating", n.sample, "samples\n", sep = " ")
+        cat("Generating", n.keep, "post burnin and thinned (if requested) samples\n", sep = " ")
+        
         progressBar <- txtProgressBar(style = 3)
         percentage.points<-round((1:100/100)*n.sample)
     }else

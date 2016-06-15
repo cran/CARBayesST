@@ -16,7 +16,7 @@ Fit a spatio-temporal generalised linear mixed model to data with a spatio-tempo
     associated with each pair of geographically adjacent areal units are treated as random 
     variables, which allows step changes to be identified in the random effects surface 
     between geogrphically adjacent regions. The model is similar to that proposed by 
-    Rushworth et al. (2014). Further details are given in the vignette accompanying this package.
+    Rushworth et al. (2016). Further details are given in the vignette accompanying this package.
     Inference is conducted in a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
 }
 
@@ -48,8 +48,8 @@ rhofix = NULL, epsilon = 0, verbose=TRUE)
         An optional data.frame containing the  variables in the formula.
     }
     \item{trials}{
-        A vector the same length as the response containing the total number of trials 
-        for each area and time period. Only used if family=`binomial'. 
+        A vector the same length and in the same order as the response containing the 
+        total number of trials for each area and time period. Only used if family=`binomial'. 
     }
     \item{W}{
         A K by K neighbourhood matrix (where K is the number of spatial units). 
@@ -59,7 +59,7 @@ rhofix = NULL, epsilon = 0, verbose=TRUE)
         one non-zero entry.
     }  
     \item{burnin}{
-        The number of McMC samples to discard as the burnin period.
+        The number of McMC samples to discard as the burn-in period.
     }
     \item{n.sample}{
         The number of McMC samples to generate.
@@ -78,12 +78,12 @@ rhofix = NULL, epsilon = 0, verbose=TRUE)
     } 
     \item{prior.nu2}{
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
-        prior for the Gaussian error variance nu2. Defaults to c(0.001, 0.001) and only used if
+        prior for the Gaussian error variance nu2. Defaults to c(1, 0.01) and only used if
         family=`Gaussian'.   
     }
     \item{prior.tau2}{
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
-        prior for the random effect variance tau2. Defaults to c(0.001, 0.001).  
+        prior for the random effect variance tau2. Defaults to c(1, 0.01).  
     }
     \item{rhofix}{
         Value between 0 and 1 at which to fix the spatial correlation parameter.  Setting rhofix=1, 
@@ -123,8 +123,9 @@ Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Crite
 
 
 \references{
-Rushworth, A., Lee, D., and Sarran, C.  An adaptive spatio-temporal smoothing model for 
-estimating trends and step changes in disease risk (2014) arXiv:1411.0924
+Rushworth, A., Lee, D., and Sarran, C (2016).  An adaptive spatio-temporal smoothing model for 
+estimating trends and step changes in disease risk. Journal of the Royal Statistical Society 
+Series C, DOI: 10.1111/rssc.12155.
 }
 
 \author{

@@ -18,7 +18,7 @@
 }
 
 @article{JSSv067i01,
-   author = {Douglas Bates and Martin Mächler and Ben Bolker and Steve Walker},
+   author = {Douglas Bates and Martin M{\"a}chler and Ben Bolker and Steve Walker},
    title = {Fitting Linear Mixed-Effects Models Using lme4},
    journal = {Journal of Statistical Software},
    volume = {67},
@@ -64,14 +64,22 @@
 }
 
 @BOOK{bivand2013b,
-  AUTHOR =       "Bivand, R adn Pebesma, E and {Gomez-Rubio}, V",
-  TITLE =        "Applied
-  spatial data analysis with R",
+  AUTHOR =       "Bivand, R and Pebesma, E and {Gomez-Rubio}, V",
+  TITLE =        "Applied spatial data analysis with R",
   PUBLISHER =    "Springer, NY",
   YEAR =         "2013",
   edition =      "2nd",
 }
 
+
+@Manual{carbayesdata,
+    title = {CARBayesdata: Data Used in the Vignettes Accompanying the CARBayes and
+CARBayesST Packages},
+    author = {Duncan Lee},
+    year = {2016},
+    note = {R package version 2.0},
+}
+  
   
 @ARTICLE{charras2012,
   AUTHOR =       "Charras-Garrido, M and Abrial, D and de Goer, J",
@@ -110,6 +118,14 @@ pages={1008--1022},
   PUBLISHER =    "John {W}iley and {S}ons",
   YEAR =         "2005",
   edition =      "1st",
+}
+
+@Manual{dplyr2015,
+    title = {dplyr: A Grammar of Data Manipulation},
+    author = {Hadley Wickham and Romain Francois},
+    year = {2015},
+    note = {R package version 0.4.3},
+    url = {https://CRAN.R-project.org/package=dplyr},
 }
 
 @article{JSSv027i02,
@@ -153,6 +169,15 @@ pages={1008--1022},
     publisher = {University Press}
 }
 
+
+@ARTICLE{haining2010,
+  AUTHOR =       "Haining, R and Li, G and Maheswaran, R and Blangiardo, M and Law, J and Best, N and Richardson, S",
+  TITLE =        "Inference from ecological models: estimating the relative risk of stroke from air pollution exposure using small area data",
+  JOURNAL =      "Spatial {S}patio-temporal {E}pidemiol",
+  YEAR =         "2010",
+  volume =       "1",
+  pages =        "123-131, DOI:10.1016/j.sste.2010.03.006",
+}
 
 
 @ARTICLE{knorrheld2000,
@@ -200,14 +225,41 @@ pages={1008--1022},
   pages =        "81-95",
 }
 
-@INBOOK{leroux1999,
-  AUTHOR =       {Leroux, B and Lei, X and Breslow, N},
-  TITLE =        {Estimation of Disease Rates in Small Areas: {A} New Mixed Model for Spatial Dependence},
-  CHAPTER = {Statistical {M}odels in {E}pidemiology, the {E}nvironment and {C}linical {T}rials, Halloran, M and Berry, D (eds)},
-  pages =        {135-178},
-  PUBLISHER =    {Springer-Verlag, {N}ew {Y}ork},
-  YEAR =         {1999},
+
+@ARTICLE{lee2016,
+  AUTHOR =       "Lee, D and Lawson, A",
+  TITLE =        "Quantifying the spatial inequality and temporal trends in maternal smoking rates in {G}lasgow",
+  JOURNAL =      "Annals of {A}pplied {S}tatistics",
+  YEAR =         "2016",
+  volume =       "-",
+  pages =        "to appear",
 }
+
+
+@Inbook{leroux2000,
+author="Leroux, Brian G.
+and Lei, Xingye
+and Breslow, Norman",
+chapter="Estimation of Disease Rates in Small Areas: A new Mixed Model for Spatial Dependence",
+title="Statistical Models in Epidemiology, the Environment, and Clinical Trials",
+year="2000",
+publisher="Springer New York",
+address="New York, NY",
+pages="179--191",
+isbn="978-1-4612-1284-3",
+doi="10.1007/978-1-4612-1284-3_4",
+url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4"
+}
+
+@ARTICLE{li2012,
+  AUTHOR =       "Li, G and Best, N and Hansell, A and Ahmed,  I and Richardson, S",
+  TITLE =        "{BaySTDetect}: detecting unusual temporal patterns in small area data via Bayesian model choice",
+  JOURNAL =      "Biostatistics",
+  YEAR =         "2012",
+  volume =       "13",
+  pages =        "695-710",
+}
+
 
 @ARTICLE{lunn2009,
  AUTHOR =       "Lunn, D and  Spiegelhalter, D and Thomas, A and Best, N",
@@ -239,6 +291,14 @@ pages={1008--1022},
   }
   
   
+  @Manual{matrixcalc2012,
+    title = {matrixcalc: Collection of functions for matrix calculations},
+    author = {Frederick Novomestky},
+    year = {2012},
+    note = {R package version 1.0-3},
+    url = {https://CRAN.R-project.org/package=matrixcalc},
+  }
+  
 @Article{millo2012,
     title = {{splm}: Spatial Panel Data Models in {R}},
     author = {Giovanni Millo and Gianfranco Piras},
@@ -250,6 +310,15 @@ pages={1008--1022},
     url = {http://www.jstatsoft.org/v47/i01/},
 }
 
+
+@ARTICLE{moran1950,
+  AUTHOR =       "Moran, P",
+  TITLE =        "Notes on continuous stochastic phenomena",
+  JOURNAL =      "Biometrika",
+  YEAR =         "1950",
+  volume =       "37",
+  pages =        "17-23,  DOI:10.1093/biomet/37.1-2.17 ",
+}
 
 
 @ARTICLE{napier2016,
@@ -281,9 +350,19 @@ pages={1008--1022},
     author = {{\proglang{R} Core Team}},
     organization = {\proglang{R} Foundation for Statistical Computing},
     address = {Vienna, Austria},
-    year = {2013},
+    year = {2016},
     url = {http://www.R-project.org/},
   }
+
+  
+  
+@MISC{ricardo2015,
+  AUTHOR =       "{RICARDO-AEA}",
+  TITLE =        "Technical report on {UK} supplementary assessment under the {A}ir {Q}uality {D}irective {(2008/50/EC)}, the {A}ir {Q}uality {F}ramework {D}irective {(96/62/EC)} and {F}ourth {D}aughter {D}irective {(2004/107/EC)} for 2013",
+   YEAR =         "2015",
+  howpublished =       "https://uk-air.defra.gov.uk/data/pcm-data",
+}
+
 
 @ARTICLE{rue2009,
   AUTHOR =       "Rue, H and Martino, S and Chopin, N",
@@ -303,13 +382,13 @@ pages={1008--1022},
   pages =       "29-38",
 }
 
-@ARTICLE{rushworth2014b,
+@ARTICLE{rushworth2016,
   AUTHOR =       "Rushworth, A and Lee, D and Sarran, C",
   TITLE =        "An adaptive spatio-temporal smoothing model for estimating trends and step changes in disease risk",
-  JOURNAL =      "arXiv",
-  YEAR =         "2014",
-  volume =       "1411.0924",
-  pages =       "1-27",
+  JOURNAL =      "Journal of the {R}oyal {S}tatistical {S}ociety {S}eries {C}",
+  YEAR =         "2016",
+  volume =       "-",
+  pages =       "DOI: 10.1111/rssc.12155",
 }
 
 @Manual{schabenberger2009,

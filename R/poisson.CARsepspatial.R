@@ -73,8 +73,7 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   if(sum(is.na(W))>0) stop("W has missing 'NA' values.", call.=FALSE)
   if(!is.numeric(W)) stop("W has non-numeric values.", call.=FALSE)
   if(min(W)<0) stop("W has negative elements.", call.=FALSE)
-  if(sum(W!=t(W))>0) stop("W is not symmetric.", call.=FALSE)
-  
+  if(!is.symmetric.matrix(W)) stop("W is not symmetric.", call.=FALSE)
   
   #### Response variable
   Y <- model.response(frame)
@@ -100,7 +99,13 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   if(!is.numeric(offset)) stop("the offset variable has non-numeric values.", call.=FALSE)
   
   
-
+  ## Check for errors on rho and fix.rho
+  if(!is.logical(fix.rho.S)) stop("fix.rho.S is not logical.", call.=FALSE)   
+  if(fix.rho.S & is.null(rho.S)) stop("rho.S is fixed but an initial value was not set.", call.=FALSE)   
+  if(fix.rho.S & !is.numeric(rho.S) ) stop("rho.S is not numeric.", call.=FALSE)  
+  if(!is.logical(fix.rho.T)) stop("fix.rho.T is not logical.", call.=FALSE)   
+  if(fix.rho.T & is.null(rho.T)) stop("rho.T is fixed but an initial value was not set.", call.=FALSE)   
+  if(fix.rho.T & !is.numeric(rho.T) ) stop("rho.T is not numeric.", call.=FALSE)    
   
   
   #### Specify the initial parameter values
@@ -134,14 +139,34 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   {
       lambda <- runif(1)       
   }   
+  
+  if(rho<0 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
+  if(rho>1 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
+  if(lambda<0 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
+  if(lambda>1 ) stop("rho.T is outside the range [0, 1].", call.=FALSE) 
 
+  
+  if(fix.rho.S & rho==0)
+  {
+      ## Set up a dummy W matrix to use in the code as it will not affect the results
+      W <- array(0, c(K,K))
+      for(r in 2:K)
+      {
+          W[(r-1), r] <- 1   
+          W[r, (r-1)] <- 1
+      }
+  }else
+  {
+      if(min(apply(W, 1, sum))==0) stop("W has some areas with no neighbours (one of the row sums equals zero).", call.=FALSE)    
+  }
+  
 
   
   #### Check and specify the priors
   ## Put in default priors
   if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
   if(is.null(prior.var.beta)) prior.var.beta <- rep(1000, p)
-  if(is.null(prior.tau2)) prior.tau2 <- c(0.001, 0.001)
+  if(is.null(prior.tau2)) prior.tau2 <- c(1, 0.01)
 
   
   if(length(prior.mean.beta)!=p) stop("the vector of prior means for beta is the wrong length.", call.=FALSE)    
@@ -198,20 +223,7 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
       n.beta.block <- length(beta.beg)
     }
   }         
-  
-  ## Check for errors on rho and fix.rho
-  if(!is.logical(fix.rho.S)) stop("fix.rho.S is not logical.", call.=FALSE)   
-  if(fix.rho.S & is.null(rho.S)) stop("rho.S is fixed but an initial value was not set.", call.=FALSE)   
-  if(fix.rho.S & !is.numeric(rho.S) ) stop("rho.S is not numeric.", call.=FALSE)  
-  if(rho<0 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
-  if(rho>1 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
-  
-  ## Check for errors on rho and fix.rho
-  if(!is.logical(fix.rho.T)) stop("fix.rho.T is not logical.", call.=FALSE)   
-  if(fix.rho.T & is.null(rho.T)) stop("rho.T is fixed but an initial value was not set.", call.=FALSE)   
-  if(fix.rho.T & !is.numeric(rho.T) ) stop("rho.T is not numeric.", call.=FALSE)  
-  if(lambda<0 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
-  if(lambda>1 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
+
 
     
   #### Set up matrices to store samples
@@ -359,8 +371,8 @@ poisson.CARsepspatial <- function(formula, data=NULL, W, burnin, n.sample, thin=
   ## Start timer
   if(verbose)
   {
-    cat("Generating", n.sample, "samples\n", sep = " ")
-    progressBar <- txtProgressBar(style = 3)
+      cat("Generating", n.keep, "post burnin and thinned (if requested) samples\n", sep = " ")
+      progressBar <- txtProgressBar(style = 3)
     percentage.points<-round((1:100/100)*n.sample)
   }else
   {

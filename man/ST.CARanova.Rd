@@ -48,15 +48,17 @@
         An optional data.frame containing the  variables in the formula.
     }
     \item{trials}{
-        A vector the same length as the response containing the total number of trials 
-        for each area and time period. Only used if family=`binomial'. 
+        A vector the same length and in the same order as the response containing the 
+        total number of trials for each area and time period. Only used if family=`binomial'. 
     }
     \item{W}{
         A K by K neighbourhood matrix (where K is the number of spatial units). 
         Typically a binary specification is used, where the jkth element equals one
         if areas (j, k) are spatially close (e.g. share a common border) and is zero 
         otherwise. The matrix can be non-binary, but each row must contain at least 
-        one non-zero entry.
+        one non-zero entry. Note, if fix.rho.S=TRUE and rho.S=0 then the W matrix is 
+        not actually used by the model so a K by K matrix of zeros could be entered
+        instead if a real W matrix is cannot be obtained.
     }
     \item{interaction}{
         TRUE or FALSE indicating whether the spatio-temporal interaction random effects
@@ -64,7 +66,7 @@
         case interactions are not allowed.
     }    
     \item{burnin}{
-        The number of McMC samples to discard as the burnin period.
+        The number of McMC samples to discard as the burn-in period.
     }
     \item{n.sample}{
         The number of McMC samples to generate.
@@ -83,12 +85,12 @@
     }  
     \item{prior.nu2}{
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
-        prior for the Gaussian error variance nu2. Defaults to c(0.001, 0.001) and only used if
+        prior for the Gaussian error variance nu2. Defaults to c(1, 0.01) and only used if
         family=`Gaussian'.   
     }
     \item{prior.tau2}{
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
-        prior for the random effect variances tau2. Defaults to c(0.001, 0.001).  
+        prior for the random effect variances tau2. Defaults to c(1, 0.01).  
     }
     \item{fix.rho.S}{
         Logical, should the spatial dependence parameter rho.S be fixed when fitting the model.  

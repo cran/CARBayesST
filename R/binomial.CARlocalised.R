@@ -26,7 +26,7 @@ binomial.CARlocalised <- function(formula, data=NULL, G, trials,  W, burnin, n.s
     if(sum(is.na(W))>0) stop("W has missing 'NA' values.", call.=FALSE)
     if(!is.numeric(W)) stop("W has non-numeric values.", call.=FALSE)
     if(min(W)<0) stop("W has negative elements.", call.=FALSE)
-    if(sum(W!=t(W))>0) stop("W is not symmetric.", call.=FALSE)
+    if(!is.symmetric.matrix(W)) stop("W is not symmetric.", call.=FALSE)
     if(min(apply(W, 1, sum))==0) stop("W has some areas with no neighbours (one of the row sums equals zero).", call.=FALSE)    
     
     #### Response variable
@@ -164,7 +164,7 @@ binomial.CARlocalised <- function(formula, data=NULL, G, trials,  W, burnin, n.s
     if(sum(is.na(prior.delta))!=0) stop("the prior value for delta has missing values.", call.=FALSE)    
     if(prior.delta<=0) stop("the prior value for delta is not positive.", call.=FALSE)    
     
-    if(is.null(prior.tau2)) prior.tau2 <- c(0.001, 0.001)
+    if(is.null(prior.tau2)) prior.tau2 <- c(1, 0.01)
     if(length(prior.tau2)!=2) stop("the prior value for tau2 is the wrong length.", call.=FALSE)    
     if(!is.numeric(prior.tau2)) stop("the prior value for tau2 is not numeric.", call.=FALSE)    
     if(sum(is.na(prior.tau2))!=0) stop("the prior value for tau2 has missing values.", call.=FALSE)    
@@ -178,6 +178,7 @@ binomial.CARlocalised <- function(formula, data=NULL, G, trials,  W, burnin, n.s
     res.temp <- log(theta.hat / (1 - theta.hat)) - regression.vec - offset
     res.sd <- sd(res.temp, na.rm=TRUE)/5
     phi.mat <- matrix(rnorm(n=N.all, mean=0, sd = res.sd), nrow=K, byrow=FALSE)
+    phi <- as.numeric(phi.mat)
     tau2 <- var(phi)/10
     gamma <- runif(1)
     Z <- sample(1:G, size=N.all, replace=TRUE)
@@ -289,7 +290,7 @@ binomial.CARlocalised <- function(formula, data=NULL, G, trials,  W, burnin, n.s
     ## Start timer
     if(verbose)
     {
-        cat("Generating", n.sample, "samples\n", sep = " ")
+        cat("Generating", n.keep, "post burnin and thinned (if requested) samples\n", sep = " ")
         progressBar <- txtProgressBar(style = 3)
         percentage.points<-round((1:100/100)*n.sample)
     }else

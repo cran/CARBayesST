@@ -13,9 +13,10 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
   n.edges        <- nrow(locs)
   
   # convert the supplied adjacency matrix into a spam matrix, if required.
+  if(!is.symmetric.matrix(W)) stop("W is not symmetric.", call.=FALSE)
   if(class(W) == "matrix") W <- as.spam(W)
   if(!class(W) %in% c("matrix", "spam")) stop("W must be an object with class \"matrix\" or \"spam\"", call.=FALSE)  
-  
+
   logit     <- function(p) log(p/(1-p))
   inv_logit <- function(v) 1/(1+exp(-v))
   
@@ -49,12 +50,12 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
   if(min(prior.var.beta) <=0) stop("the vector of prior variances has elements less than zero", call.=FALSE)
   prior.prec.beta <- diag.spam(1/prior.var.beta, nrow = length(prior.var.beta))
   
-  if(is.null(prior.tau2)) prior.tau2 <- c(0.001, 0.001)
+  if(is.null(prior.tau2)) prior.tau2 <- c(1, 0.01)
   if(length(prior.tau2)!=2) stop("the prior value for tau2 is the wrong length.", call.=FALSE)    
   if(!is.numeric(prior.tau2)) stop("the prior value for tau2 is not numeric.", call.=FALSE)    
   if(sum(is.na(prior.tau2))!=0) stop("the prior value for tau2 has missing values.", call.=FALSE)    
   
-  if(is.null(prior.nu2)) prior.nu2 <- c(0.001, 0.001)
+  if(is.null(prior.nu2)) prior.nu2 <- c(1, 0.01)
   if(length(prior.nu2)!=2) stop("the prior value for nu2 is the wrong length.", call.=FALSE)    
   if(!is.numeric(prior.nu2)) stop("the prior value for nu2 is not numeric.", call.=FALSE)    
   if(sum(is.na(prior.nu2))!=0) stop("the prior value for nu2 has missing values.", call.=FALSE)   
@@ -239,8 +240,9 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
   firstblock     <- 1:n.sites
   
   ## Start timer
+  n.keep <- floor((n.sample - burnin)/thin)
   if(verbose){
-    cat("Generating", n.sample, "samples\n", sep = " ")
+      cat("Generating", n.keep, "post burnin and thinned (if requested) samples\n", sep = " ")
     progressBar            <- txtProgressBar(style = 3)
     percentage.points      <- round((1:100/100)*n.sample)
   } else percentage.points <- round((1:100/100)*n.sample)     

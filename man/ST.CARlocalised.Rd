@@ -12,13 +12,13 @@
     variable can be binomial or Poisson. The linear predictor is modelled by known 
     covariates, a vector of random effects and a piecewise constant intercept process. The 
     random effects follow the multivariate first order autoregressive time series process
-    proposed by Rushworth et al.(2014), and are the same as those used in the ST.CARar() function.
+    proposed by Rushworth et al.(2014), which is the same as that used in the ST.CARar() function.
     The piecewise constant intercept component allows neighbouring areal units to have very
     different values if they are assigned to a different intercept component. This model allows
     for localised smoothness as some pairs of neighbouring areas or time periods can have similar 
-    values while other neighbouring pairs have different values. This is a spatio-temopral extension 
-    of Lee and Sarran (2015), and furter details are given in the vignette accompanying this package. 
-    Inference is conducted in a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
+    values while other neighbouring pairs have different values. Furter details are given in 
+    Lee and Lawson (2016) and in the vignette accompanying this package. Inference is conducted in 
+    a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
 }
 
 \usage{
@@ -51,8 +51,8 @@
         The maximum number of distinct intercept terms (clusters) to allow in the model.
     }
     \item{trials}{
-        A vector the same length as the response containing the total number of trials 
-        for each area and time period. Only used if family=`binomial'. 
+        A vector the same length and in the same order as the response containing the 
+        total number of trials for each area and time period. Only used if family=`binomial'. 
     }
         \item{W}{
         A K by K neighbourhood matrix (where K is the number of spatial units). 
@@ -62,7 +62,7 @@
         one non-zero entry.
     }  
         \item{burnin}{
-        The number of McMC samples to discard as the burnin period.
+        The number of McMC samples to discard as the burn-in period.
     }
         \item{n.sample}{
         The number of McMC samples to generate.
@@ -84,7 +84,7 @@
     }
         \item{prior.tau2}{
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
-        prior for the random effect variance tau2. Defaults to c(0.001, 0.001).  
+        prior for the random effect variance tau2. Defaults to c(1, 0.01).  
     }
         \item{verbose}{
         Logical, should the function update the user on its progress.  
@@ -110,12 +110,8 @@ Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Crite
 }
 
 \references{
-    Lee, D and Sarran, C  (2015). Controlling for unmeasured confounding and spatial 
-    misalignment in long-term air pollution and health studies, Environmetrics, 26, 477-487.
-
-    Rushworth, A., D. Lee, and R. Mitchell (2014). A spatio-temporal model for estimating
-    the long-term effects of air pollution on respiratory hospital admissions in Greater
-    London. Spatial and Spatio-temporal Epidemiology 10, 29-38.
+Lee, D and Lawson, C  (2016). Quantifying the spatial inequality and temporal trends in
+maternal smoking rates in Glasgow, Annals of Applied Statistics, to appear.
 }
 
 \author{

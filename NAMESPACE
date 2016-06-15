@@ -13,11 +13,14 @@ import(spam)
 import(MASS)
 importFrom(truncdist, rtrunc)
 import(Rcpp)
+import(CARBayesdata)
 import(stats)
 importFrom(coda, mcmc, geweke.diag, effectiveSize)
 importFrom(utils, setTxtProgressBar, txtProgressBar)
-importFrom(spdep, mat2listw, n.comp.nb)
-
+importFrom(spdep, mat2listw, moran.mc, n.comp.nb, nb2listw, nb2mat, poly2nb)
+importFrom(matrixcalc, is.symmetric.matrix)
+importFrom(sp, spplot)
+importFrom(dplyr, summarise)
 
 
 
