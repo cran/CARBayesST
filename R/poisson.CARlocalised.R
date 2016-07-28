@@ -614,9 +614,13 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     LMPL <- sum(log(CPO))  
     
     
-    ## Create the Fitted values
+    ## Create the fitted values and residuals
     fitted.values <- apply(samples.fitted, 2, median)
-    residuals <- as.numeric(Y) - fitted.values
+    response.residuals <- as.numeric(Y) - fitted.values
+    pearson.residuals <- response.residuals /sqrt(fitted.values)
+    deviance.residuals <- sign(response.residuals) * sqrt(2 * (Y * log(Y/fitted.values) + fitted.values - Y))
+    residuals <- data.frame(response=response.residuals, pearson=pearson.residuals, deviance=deviance.residuals)
+    
     
     
     #### transform the parameters back to the origianl covariate scale.
@@ -680,14 +684,16 @@ poisson.CARlocalised <- function(formula, data=NULL, G, W, burnin, n.sample, thi
     
     
     ## Compile and return the results
-    modelfit <- c(DIC, p.d, WAIC, p.w, LMPL)
-    names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL")
+    loglike <- (-0.5 * deviance.fitted)
+    modelfit <- c(DIC, p.d, WAIC, p.w, LMPL, loglike)
+    names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL", "loglikelihood")
+    
     if(is.null(X)) samples.beta.orig = NA
        
     samples <- list(beta=mcmc(samples.beta.orig), lambda=mcmc(samples.lambda),  Z=mcmc(samples.Z), delta=mcmc(samples.delta), phi = mcmc(samples.phi), tau2=mcmc(samples.tau2), rho.T=mcmc(samples.gamma), fitted=mcmc(samples.fitted))
     model.string <- c("Likelihood model - Poisson (log link function)", "\nLatent structure model - Localised autoregressive CAR model\n")
     results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=median.Z, formula=formula, model=model.string,  X=X)
-    class(results) <- "carbayesST"
+    class(results) <- "CARBayesST"
     if(verbose)
     {
         b<-proc.time()

@@ -507,8 +507,10 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   regression.mat     <- matrix(X.standardised %*% median.beta, nrow = n.sites, ncol = n.time, byrow=FALSE)   
   median.phi         <- matrix(apply(samples.phi, 2, median), nrow = n.sites, ncol = n.time)
   offset.mat         <- matrix(offset, nrow = n.sites, ncol = n.time, byrow=FALSE) 
-  fitted.median      <- as.numeric(1/(1 + exp( - median.phi - regression.mat - offset.mat)))*trials
-  deviance.fitted    <- -2 * sum(dpois(x=as.numeric(y), lambda=fitted.median, log=TRUE))
+  lp.median <- as.numeric(offset.mat + median.phi + regression.mat)   
+  median.prob <- exp(lp.median)  / (1 + exp(lp.median))
+  fitted.median <- trials * median.prob
+  deviance.fitted <- -2 * sum(dbinom(x=y, size=trials, prob=median.prob, log=TRUE), na.rm=TRUE)
   p.d <- median(samples.deviance) - deviance.fitted
   DIC <- 2 * median(samples.deviance) - deviance.fitted     
   
@@ -528,11 +530,16 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   LMPL <- sum(log(CPO))    
   
   
-  ## Create the Fitted values
-  fitted.values      <- apply(samples.fit, 2, median)
-  residuals          <- as.numeric(y) - fitted.values
+  ## Create the fitted values and residuals
+  fitted.values <- apply(samples.fit, 2, median)
+  response.residuals <- as.numeric(y) - fitted.values
+  pearson.residuals <- response.residuals /sqrt(fitted.values * (1 - median.prob))
+  deviance.residuals <- sign(response.residuals) * sqrt(2 * (y * log(y/fitted.values) + (trials-y) * log((trials-y)/(trials - fitted.values))))
+  residuals <- data.frame(response=response.residuals, pearson=pearson.residuals, deviance=deviance.residuals)
+
   
-  #### transform the parameters back to the origianl covariate scale.
+  
+    #### transform the parameters back to the origianl covariate scale.
   samples.beta.orig <- samples.beta
   for(r in 1:p)
   {
@@ -594,8 +601,10 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   Wmn[locs[ ,c(2,1)]] <- bdryMN    
   
   ## Compile and return the results
-  modelfit <- c(DIC, p.d, WAIC, p.w, LMPL)
-  names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL")
+  loglike <- (-0.5 * deviance.fitted)
+  modelfit <- c(DIC, p.d, WAIC, p.w, LMPL, loglike)
+  names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL", "loglikelihood")
+  
   model.string    <- c("Likelihood model - Binomial (logit link function)", 
                        "\nLatent structure model - Adaptive autoregressive CAR model\n")
   samples.tau2all <- cbind(samples.tau2, samples.vtau2)
@@ -616,7 +625,7 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   localised.structure <- list(Wmedian = Wmn, W99 = W99)
   results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=localised.structure,  formula=formula, model=model.string, X=X)
   
-  class(results) <- "carbayesST"
+  class(results) <- "CARBayesST"
   if(verbose)
   {
     b<-proc.time()

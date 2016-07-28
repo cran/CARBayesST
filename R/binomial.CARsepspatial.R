@@ -705,9 +705,12 @@ binomial.CARsepspatial <- function(formula, data=NULL, trials, W, burnin, n.samp
   LMPL <- sum(log(CPO), na.rm=TRUE)  
   
   
-  ## Create the Fitted values
+  ## Create the fitted values and residuals
   fitted.values <- apply(samples.fitted, 2, median)
-  residuals <- as.numeric(Y) - fitted.values
+  response.residuals <- as.numeric(Y) - fitted.values
+  pearson.residuals <- response.residuals /sqrt(fitted.values * (1 - median.prob))
+  deviance.residuals <- sign(response.residuals) * sqrt(2 * (Y * log(Y/fitted.values) + (trials-Y) * log((trials-Y)/(trials - fitted.values))))
+  residuals <- data.frame(response=response.residuals, pearson=pearson.residuals, deviance=deviance.residuals)
   
   
   #### transform the parameters back to the origianl covariate scale.
@@ -782,8 +785,10 @@ binomial.CARsepspatial <- function(formula, data=NULL, trials, W, burnin, n.samp
   
   
   ## Compile and return the results
-  modelfit <- c(DIC, p.d, WAIC, p.w, LMPL)
-  names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL")
+  loglike <- (-0.5 * deviance.fitted)
+  modelfit <- c(DIC, p.d, WAIC, p.w, LMPL, loglike)
+  names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL", "loglikelihood")
+  
   
   if(fix.rho.S & fix.rho.T)
   {
@@ -806,7 +811,7 @@ binomial.CARsepspatial <- function(formula, data=NULL, trials, W, burnin, n.samp
                   delta=mcmc(samples.delta), fitted=mcmc(samples.fitted))
   model.string <- c("Likelihood model - binomial (logit link function)", "\nLatent structure model - An overall time trend with temporal specific spatial effects\n")
   results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=NULL, formula=formula, model=model.string,  X=X)
-  class(results) <- "carbayesST"
+  class(results) <- "CARBayesST"
   if(verbose)
   {
     b<-proc.time()

@@ -8,7 +8,12 @@ export(
      ST.CARsepspatial
 )
 
-S3method(print, carbayesST)
+S3method(print, CARBayesST)
+S3method(fitted, CARBayesST)
+S3method(model.matrix, CARBayesST)
+S3method(coef, CARBayesST)
+S3method(residuals, CARBayesST)
+S3method(logLik, CARBayesST)
 import(spam)
 import(MASS)
 importFrom(truncdist, rtrunc)

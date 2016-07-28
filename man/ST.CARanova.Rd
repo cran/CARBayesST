@@ -116,11 +116,14 @@
     \item{summary.results }{A summary table of the parameters.}
     \item{samples }{A list containing the McMC samples from the model.}
     \item{fitted.values }{A vector of fitted values for each area and time period.}
-    \item{residuals }{A vector of residuals for each area and time period.}
-    \item{modelfit }{Model fit criteria including the Deviance Information Criterion 
+    \item{residuals }{A matrix with 3 columns where each column is a type of 
+        residuals for each area and time period. The types are "response" (raw), 
+        "pearson", and "deviance".}    
+        \item{modelfit }{Model fit criteria including the Deviance Information Criterion 
 (DIC) and its corresponding estimated effective number of parameters (p.d), the Log 
-Marginal Predictive Likelihood (LMPL), and the Watanabe-Akaike Information Criterion 
-(WAIC) and its corresponding estimated number of effective parameters (p.w).}
+Marginal Predictive Likelihood (LMPL), the Watanabe-Akaike Information Criterion 
+(WAIC) and its corresponding estimated number of effective parameters (p.w), and the
+estimated loglikelihood.}
     \item{accept }{The acceptance probabilities for the parameters.}
     \item{localised.structure }{NULL, for compatability with the other models.}
     \item{formula }{The formula for the covariate and offset part of the model.}

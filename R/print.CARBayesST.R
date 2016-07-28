@@ -1,4 +1,4 @@
-print.carbayesST <- function(x,...)
+print.CARBayesST <- function(x,...)
 {
      if(class(x$localised.structure)=="list")
      {

@@ -17,7 +17,8 @@ are given in the vignette accompanying this package and the references below. Th
 this package was supported by the Engineering and Physical Sciences Research Council (EPSRC) 
 grant EP/J017442/1 and the Medical Research Council (MRC) grant MR/L022184/1.
 
-The main change between version 2.3 and 2.2 is a vastly enhanced vignette with worked examples.
+Version 2.4 has only minor changes from version 2.3 in that it has more extractor functionality.
+Version 2.3 has a vastly enhanced vignette compared to version 2.2 with worked examples.
 Additionally, a few bugs in the code have been fixed. Version 2.2 itself has the following 
 changes from version 2.1. Firstly, missing values are allowed  in the response variable for 
 the models ST.CARanova(), ST.CARar() and ST.CARlinear(). Secondly, the spatial and temporal 
@@ -32,8 +33,8 @@ number of effective parameters (p.w).
 \tabular{ll}{
 Package: \tab CARBayesST\cr
 Type: \tab Package\cr
-Version: \tab 2.3\cr
-Date: \tab 2016-06-15\cr
+Version: \tab 2.4\cr
+Date: \tab 2016-07-28\cr
 License: \tab GPL (>= 2)\cr
 }
 }

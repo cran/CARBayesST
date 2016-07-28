@@ -481,11 +481,16 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
     CPO[j] <- 1/median((1 / dnorm(y[j], mean=samples.fit[ ,j], sd=sqrt(samples.nu2))))   
   }
   LMPL <- sum(log(CPO))    
+
+
   
+  ## Create the fitted values and residuals
+  fitted.values <- apply(samples.fit, 2, median)
+  response.residuals <- as.numeric(y) - fitted.values
+  pearson.residuals <- response.residuals /sqrt(median.nu2)
+  deviance.residuals <- sign(response.residuals) * sqrt((y-fitted.values)^2/median.nu2)
+  residuals <- data.frame(response=response.residuals, pearson=pearson.residuals, deviance=deviance.residuals)
   
-  ## Create the Fitted values
-  fitted.values      <- apply(samples.fit, 2, median)
-  residuals          <- as.numeric(y) - fitted.values
   
   #### transform the parameters back to the origianl covariate scale.
   samples.beta.orig <- samples.beta
@@ -553,8 +558,10 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
   
   
   ## Compile and return the results
-  modelfit <- c(DIC, p.d, WAIC, p.w, LMPL)
-  names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL")
+  loglike <- (-0.5 * deviance.fitted)
+  modelfit <- c(DIC, p.d, WAIC, p.w, LMPL, loglike)
+  names(modelfit) <- c("DIC", "p.d", "WAIC", "p.w", "LMPL", "loglikelihood")
+  
   model.string    <- c("Likelihood model - Gaussian (identity link function)", 
                        "\nLatent structure model - Adaptive autoregressive CAR model\n")
   samples.tau2all <- cbind(samples.tau2, samples.vtau2)
@@ -573,7 +580,7 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
                           tau2 = mcmc(samples.tau2all), nu2 = mcmc(samples.nu2),  w = mcmc(samples.w), fitted = mcmc(samples.fit))  
   localised.structure <- list(Wmedian = Wmn, W99 = W99)
   results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=localised.structure, formula=formula, model=model.string,  X=X)
-  class(results) <- "carbayesST"
+  class(results) <- "CARBayesST"
   if(verbose)
   {
     b<-proc.time()
