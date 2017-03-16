@@ -1,4 +1,4 @@
-useDynLib(CARBayesST)
+useDynLib(CARBayesST, .registration = TRUE)
 export(
      ST.CARlinear,
      ST.CARar,
@@ -16,6 +16,8 @@ S3method(residuals, CARBayesST)
 S3method(logLik, CARBayesST)
 import(spam)
 import(MASS)
+import(testthat)
+importFrom(truncnorm, rtruncnorm)
 importFrom(truncdist, rtrunc)
 import(Rcpp)
 import(CARBayesdata)

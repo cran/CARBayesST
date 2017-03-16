@@ -7,7 +7,8 @@
 }
 \description{
     This function takes a CARBayesST object and returns a set of residuals. 
-    The allowable types of residual are "response" (raw), "pearson", and "deviance". 
+    The allowable types of residual are "response" (raw), "pearson", and "deviance".
+    In each case the fitted values are based on posterior medians.
 }
 
 \usage{
@@ -21,7 +22,8 @@
         A CARBayesST fitted model object.
     }
     \item{type}{
-        A text string and one of c("response", "pearson", "deviance").
+        A text string and one of c("response", "pearson", "deviance"). If this
+        argument is omitted the default is "deviance".
     }
     \item{\dots}{
         Ignored.

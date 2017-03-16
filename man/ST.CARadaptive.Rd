@@ -15,16 +15,16 @@ Fit a spatio-temporal generalised linear mixed model to data with a spatio-tempo
     precision matrix which is based on an adjacency matrix W. The non-zero elements of W
     associated with each pair of geographically adjacent areal units are treated as random 
     variables, which allows step changes to be identified in the random effects surface 
-    between geogrphically adjacent regions. The model is similar to that proposed by 
-    Rushworth et al. (2016). Further details are given in the vignette accompanying this package.
-    Inference is conducted in a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
+    between geographically adjacent regions. The model is similar to that proposed by 
+    Rushworth et al. (2017). Further details are given in the vignette accompanying this package.
+    Inference is conducted in a Bayesian setting using Markov chain Monte Carlo (MCMC) simulation. 
 }
 
 
 \usage{
 ST.CARadaptive(formula, family, data=NULL, trials=NULL, W, burnin, n.sample, thin=1,  
 prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.tau2=NULL, 
-rhofix = NULL, epsilon = 0, verbose=TRUE) 
+rhofix = NULL, epsilon = 0, MALA=TRUE, verbose=TRUE) 
 }
 
 
@@ -52,20 +52,20 @@ rhofix = NULL, epsilon = 0, verbose=TRUE)
         total number of trials for each area and time period. Only used if family=`binomial'. 
     }
     \item{W}{
-        A K by K neighbourhood matrix (where K is the number of spatial units). 
+        A non-negative K by K neighbourhood matrix (where K is the number of spatial units). 
         Typically a binary specification is used, where the jkth element equals one
         if areas (j, k) are spatially close (e.g. share a common border) and is zero 
         otherwise. The matrix can be non-binary, but each row must contain at least 
         one non-zero entry.
     }  
     \item{burnin}{
-        The number of McMC samples to discard as the burn-in period.
+        The number of MCMC samples to discard as the burn-in period.
     }
     \item{n.sample}{
-        The number of McMC samples to generate.
+        The number of MCMC samples to generate.
     }
     \item{thin}{
-        The level of thinning to apply to the McMC samples to reduce their temporal 
+        The level of thinning to apply to the MCMC samples to reduce their temporal 
         autocorrelation. Defaults to 1 (no thinning).
     }  
     \item{prior.mean.beta}{
@@ -94,6 +94,10 @@ rhofix = NULL, epsilon = 0, verbose=TRUE)
         Diagonal ridge parameter to add to the random effects prior precision matrix, only required when 
         rhofix = 1, and the prior precision is improper.  Defaults to 0.
     }
+    \item{MALA}{
+        Logical, should the function use MALA (TRUE, default) or simple random walk (FALSE) 
+        updates for the random effects. Not applicable if family=`gaussian'.   
+    }
     \item{verbose}{
         Logical, should the function update the user on its progress.  
     }
@@ -101,7 +105,7 @@ rhofix = NULL, epsilon = 0, verbose=TRUE)
 
 \value{
     \item{summary.results }{A summary table of the parameters.}
-    \item{samples }{A list containing the McMC samples from the model.}
+    \item{samples }{A list containing the MCMC samples from the model.}
     \item{fitted.values }{A vector of fitted values for each area and time period.}
     \item{residuals }{A matrix with 3 columns where each column is a type of 
         residuals for each area and time period. The types are "response" (raw), 
@@ -125,9 +129,9 @@ estimated loglikelihood.}
 
 
 \references{
-Rushworth, A., Lee, D., and Sarran, C (2016).  An adaptive spatio-temporal smoothing model for 
+Rushworth, A., Lee, D., and Sarran, C (2017).  An adaptive spatio-temporal smoothing model for 
 estimating trends and step changes in disease risk. Journal of the Royal Statistical Society 
-Series C, DOI: 10.1111/rssc.12155.
+Series C, 66, 141-157.
 }
 
 \author{
@@ -148,17 +152,12 @@ Grid <- expand.grid(x.easting, x.northing)
 K <- nrow(Grid)
 N <- 10
 N.all <- N * K
+  
     
 #### set up spatial neighbourhood matrix W
+distance <- as.matrix(dist(Grid))
 W <-array(0, c(K,K))
-    for(i in 1:K)
-    {
-        for(j in 1:K)
-        {
-        temp <- (Grid[i,1] - Grid[j,1])^2 + (Grid[i,2] - Grid[j,2])^2
-        if(temp==1)  W[i,j] <- 1 
-        }    
-    }
+W[distance==1] <-1 	
 
 
 #### Simulate the elements in the linear predictor and the data
@@ -176,6 +175,7 @@ jump <- rep(c(rep(2, 70), rep(4, 30)),N)
 LP <- jump + phi
 fitted <- exp(LP)
 Y <- rpois(n=N.all, lambda=fitted)
+
 
 #### Run the model     
 \dontrun{model <- ST.CARadaptive(formula=Y~1, family="poisson", W=W, burnin=10000,

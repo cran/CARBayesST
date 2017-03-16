@@ -13,16 +13,16 @@
     covariates and two sets of random effects. These include a common temporal main effect 
     and separate time period specific spatial effects with a common spatial dependence 
     parameter but separate variance parameters. Each component is modelled by the 
-    conditional autoregressive (CAR) prior proposed by Leroux et al. (1999). Further 
+    conditional autoregressive (CAR) prior proposed by Leroux et al. (2000). Further 
     details are given in Napier et al. (2016) and in the vignette accompanying this 
     package. Inference is conducted in a Bayesian setting using Markov chain Monte Carlo 
-    (McMC) simulation. 
+    (MCMC) simulation. 
 }
 
 \usage{
     ST.CARsepspatial(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample,
     thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, fix.rho.S=FALSE, 
-    rho.S=NULL, fix.rho.T=FALSE, rho.T=NULL, verbose=TRUE)
+    rho.S=NULL, fix.rho.T=FALSE, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 }
 
 
@@ -51,22 +51,22 @@
         total number of trials for each area and time period. Only used if family=`binomial'. 
     }
         \item{W}{
-        A K by K neighbourhood matrix (where K is the number of spatial units). 
+        A non-negative K by K neighbourhood matrix (where K is the number of spatial units). 
         Typically a binary specification is used, where the jkth element equals one
         if areas (j, k) are spatially close (e.g. share a common border) and is zero 
         otherwise. The matrix can be non-binary, but each row must contain at least 
         one non-zero entry. Note, if fix.rho.S=TRUE and rho.S=0 then the W matrix is 
         not actually used by the model so a K by K matrix of zeros could be entered
-        instead if a real W matrix is cannot be obtained.
+        instead if a real W matrix cannot be obtained.
         }
     \item{burnin}{
-        The number of McMC samples to discard as the burn-in period.
+        The number of MCMC samples to discard as the burn-in period.
     }
     \item{n.sample}{
-        The number of McMC samples to generate.
+        The number of MCMC samples to generate.
     }
     \item{thin}{
-        The level of thinning to apply to the McMC samples to reduce their temporal 
+        The level of thinning to apply to the MCMC samples to reduce their temporal 
         autocorrelation. Defaults to 1 (no thinning).
     }
     \item{prior.mean.beta}{
@@ -95,6 +95,10 @@
         If fix.rho.T=TRUE, then the value in the interval [0,1] that rho.T should be fixed to.
         Not needed if fix.rho.T=FALSE.
     }
+    \item{MALA}{
+        Logical, should the function use MALA (TRUE, default) or simple random walk (FALSE) 
+        updates for the random effects.  
+        }
     \item{verbose}{
         Logical, should the function update the user on its progress.  
         }
@@ -103,7 +107,7 @@
         
         \value{
         \item{summary.results }{A summary table of the parameters.}
-        \item{samples }{A list containing the McMC samples from the model. The `tau2' element
+        \item{samples }{A list containing the MCMC samples from the model. The `tau2' element
         of this list has columns (tau2.phi, tau2.delta, tau2.gamma) 
         (the latter if interaction=TRUE). Similarly, the `rho' element of this 
         list has columns (rho.phi, rho.delta).}
@@ -123,17 +127,16 @@ estimated loglikelihood.}
         \item{X }{The design matrix of covariates.}
         }
         
-        \references{
-        Leroux, B., X. Lei, and N. Breslow (1999). Estimation of disease rates in small 
-        areas: A new mixed model for spatial dependence, Chapter Statistical Models in 
-        Epidemiology, the Environment and Clinical Trials, Halloran, M and Berry, D (eds),
-        pp. 135-178. Springer-Verlag, New York.
+\references{
+Leroux, B., X. Lei, and N. Breslow (2000). Estimation of disease rates in small 
+areas: A new mixed model for spatial dependence, Chapter Statistical Models in 
+Epidemiology, the Environment and Clinical Trials, Halloran, M and Berry, D (eds),
+pp. 135-178. Springer-Verlag, New York.
         
-        Napier, G, D. Lee, C. Robertson, A. Lawson, and K. Pollock (2016). A model to
-        estimate the impact of changes in MMR vaccination uptake on inequalities in
-        measles susceptibility in Scotland, Statistical Methods in Medical Research,
-        to appear.
-        }
+Napier, G, D. Lee, C. Robertson, A. Lawson, and K. Pollock (2016). A model to estimate the 
+impact of changes in MMR vaccination uptake on inequalities in measles susceptibility in 
+Scotland, Statistical Methods in Medical Research, 25, 1185-1200.
+}
         
 \author{
 Gary Napier
@@ -153,21 +156,18 @@ Grid <- expand.grid(x.easting, x.northing)
 K <- nrow(Grid)
 N <- 5
 N.all <- N * K
+  
         
-#### set up a spatial (W) neighbourhood matrix
+#### set up spatial neighbourhood matrix W
+distance <- as.matrix(dist(Grid))
 W <-array(0, c(K,K))
-    for(i in 1:K)
-    {
-        for(j in 1:K)
-        {
-        temp <- (Grid[i,1] - Grid[j,1])^2 + (Grid[i,2] - Grid[j,2])^2
-        if(temp==1)  W[i,j] <- 1 
-        }    
-    }
-        
+W[distance==1] <-1 	
+
+
 #### Create the spatial covariance matrix
 Q.W <- 0.99 * (diag(apply(W, 2, sum)) - W) + 0.01 * diag(rep(1,K))
 Q.W.inv <- solve(Q.W)
+  
            
 #### Simulate the elements in the linear predictor and the data
 x <- rnorm(n=N.all, mean=0, sd=1)
@@ -185,6 +185,7 @@ delta.long <- kronecker(delta, rep(1,K))
 LP <- 4 +  x * beta + phi.long +  delta.long
 mean <- exp(LP)
 Y <- rpois(n=N.all, lambda=mean)
+  
                 
 #### Run the model
 \dontrun{model <- ST.CARsepspatial(formula=Y~x, family="poisson", W=W, burnin=10000, 

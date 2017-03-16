@@ -12,20 +12,20 @@
     variable can be binomial, Gaussian or Poisson. The linear predictor is modelled by known 
     covariates and three vectors of random effects. The latter include spatial and temporal
     main effects and a spatio-temporal interaction.  The spatial and temporal main effects are
-    modelled by the conditional autoregressive (CAR) prior proposed by Leroux et al. (1999),
+    modelled by the conditional autoregressive (CAR) prior proposed by Leroux et al. (2000),
     while the spatio-temporal interaction random effects are independent. Due to the lack of 
     identifiability between the interactions and the Gaussian errors, only main effects  are 
     allowed in the Gaussian model. Missing values are allowed in the response in this model.
     The model is similar to that proposed by Knorr-Held (2000) and further details are given 
     in the vignette accompanying this package. Inference is conducted in a Bayesian setting 
-    using Markov chain Monte Carlo (McMC) simulation. 
+    using Markov chain Monte Carlo (MCMC) simulation. 
 }
 
 \usage{
     ST.CARanova(formula, family, data=NULL,  trials=NULL, W, interaction=TRUE, burnin, 
                 n.sample, thin=1, prior.mean.beta=NULL, prior.var.beta=NULL,
                 prior.nu2=NULL, prior.tau2=NULL, fix.rho.S=FALSE, rho.S=NULL, 
-                fix.rho.T=FALSE, rho.T=NULL, verbose=TRUE)
+                fix.rho.T=FALSE, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -52,13 +52,13 @@
         total number of trials for each area and time period. Only used if family=`binomial'. 
     }
     \item{W}{
-        A K by K neighbourhood matrix (where K is the number of spatial units). 
+        A non-negative K by K neighbourhood matrix (where K is the number of spatial units). 
         Typically a binary specification is used, where the jkth element equals one
         if areas (j, k) are spatially close (e.g. share a common border) and is zero 
         otherwise. The matrix can be non-binary, but each row must contain at least 
         one non-zero entry. Note, if fix.rho.S=TRUE and rho.S=0 then the W matrix is 
         not actually used by the model so a K by K matrix of zeros could be entered
-        instead if a real W matrix is cannot be obtained.
+        instead if a real W matrix cannot be obtained.
     }
     \item{interaction}{
         TRUE or FALSE indicating whether the spatio-temporal interaction random effects
@@ -66,13 +66,13 @@
         case interactions are not allowed.
     }    
     \item{burnin}{
-        The number of McMC samples to discard as the burn-in period.
+        The number of MCMC samples to discard as the burn-in period.
     }
     \item{n.sample}{
-        The number of McMC samples to generate.
+        The number of MCMC samples to generate.
     }
     \item{thin}{
-        The level of thinning to apply to the McMC samples to reduce their temporal 
+        The level of thinning to apply to the MCMC samples to reduce their temporal 
         autocorrelation. Defaults to 1 (no thinning).
     }
     \item{prior.mean.beta}{
@@ -106,6 +106,10 @@
         If fix.rho.T=TRUE, then the value in the interval [0,1] that rho.T should be fixed to.
         Not needed if fix.rho.T=FALSE.
     }
+    \item{MALA}{
+        Logical, should the function use MALA (TRUE, default) or simple random walk (FALSE) 
+        updates for the random effects. Not applicable if family=`gaussian'.   
+        }
     \item{verbose}{
         Logical, should the function update the user on its progress.  
     }
@@ -114,7 +118,7 @@
 
 \value{
     \item{summary.results }{A summary table of the parameters.}
-    \item{samples }{A list containing the McMC samples from the model.}
+    \item{samples }{A list containing the MCMC samples from the model.}
     \item{fitted.values }{A vector of fitted values for each area and time period.}
     \item{residuals }{A matrix with 3 columns where each column is a type of 
         residuals for each area and time period. The types are "response" (raw), 
@@ -135,7 +139,7 @@ estimated loglikelihood.}
 Knorr-Held, L. (2000). Bayesian modelling of inseparable space-time variation in 
 disease risk. Statistics in Medicine, 19, 2555-2567.
 
-Leroux, B., X. Lei, and N. Breslow (1999). Estimation of disease rates in small 
+Leroux, B., X. Lei, and N. Breslow (2000). Estimation of disease rates in small 
 areas: A new mixed model for spatial dependence, Chapter Statistical Models in 
 Epidemiology, the Environment and Clinical Trials, Halloran, M and Berry, D (eds),
 pp. 135-178. Springer-Verlag, New York.
@@ -160,16 +164,11 @@ K <- nrow(Grid)
 N <- 10
 N.all <- N * K
 
+
 #### set up spatial (W) and temporal (D) neighbourhood matrices
+distance <- as.matrix(dist(Grid))
 W <-array(0, c(K,K))
-     for(i in 1:K)
-     {
-    	for(j in 1:K)
-		{
-		temp <- (Grid[i,1] - Grid[j,1])^2 + (Grid[i,2] - Grid[j,2])^2
-			if(temp==1)  W[i,j] <- 1 
-		}	
-	}
+W[distance==1] <-1 	
 	
 D <-array(0, c(N,N))
 for(i in 1:N)
@@ -179,7 +178,6 @@ for(i in 1:N)
         if(abs((i-j))==1)  D[i,j] <- 1 
     }	
 }
-
 
 
 #### Simulate the elements in the linear predictor and the data
@@ -194,7 +192,6 @@ phi <- mvrnorm(n=1, mu=rep(0,K), Sigma=(0.01 * Q.W.inv))
 Q.D <- 0.99 * (diag(apply(D, 2, sum)) - D) + 0.01 * diag(rep(1,N))
 Q.D.inv <- solve(Q.D)
 delta <- mvrnorm(n=1, mu=rep(0,N), Sigma=(0.01 * Q.D.inv))
-
 
 phi.long <- rep(phi, N)
 delta.long <- kronecker(delta, rep(1,K))

@@ -1,10 +1,9 @@
-poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, rhofix = NULL, epsilon = 0, verbose = TRUE)
-    { 
-  #### Check on the verbose option
-  if(is.null(verbose))     verbose = TRUE     
-  if(!is.logical(verbose)) stop("the verbose option is not logical.", call.=FALSE)
-  if(verbose) cat("Setting up the model\n"); a<-proc.time()
-  
+poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, rhofix = NULL, epsilon = 0, MALA=TRUE, verbose = TRUE)
+{ 
+#### Verbose
+a <- common.verbose(verbose)  
+
+    
   blocksize.beta <- 5
   blocksize.v    <- 10
   z              <- which(W > 0, arr.ind = T)
@@ -20,6 +19,12 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
   
   logit     <- function(p) log(p/(1-p))
   inv_logit <- function(v) 1/(1+exp(-v))
+  
+  
+  #### Check on MALA argument
+  if(length(MALA)!=1) stop("MALA is not length 1.", call.=FALSE)
+  if(!is.logical(MALA)) stop("MALA is not logical.", call.=FALSE) 
+  
   
   # interpret the formula
   frame <- try(suppressWarnings(model.frame(formula, data = data, na.action=na.pass)), silent=TRUE)
@@ -38,22 +43,13 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
   
   #### Check and specify the priors
   if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
-  if(length(prior.mean.beta)!=p) stop("the vector of prior means for beta is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.mean.beta)) stop("the vector of prior means for beta is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.mean.beta))!=0) stop("the vector of prior means for beta has missing values.", call.=FALSE)       
-  
   if(is.null(prior.var.beta)) prior.var.beta <- rep(1000, p)
-  if(length(prior.var.beta)!=p) stop("the vector of prior variances for beta is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.var.beta)) stop("the vector of prior variances for beta is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.var.beta))!=0) stop("the vector of prior variances for beta has missing values.", call.=FALSE)    
-  if(min(prior.var.beta) <=0) stop("the vector of prior variances has elements less than zero", call.=FALSE)
-  
   if(is.null(prior.tau2)) prior.tau2 <- c(1, 0.01)
-  if(length(prior.tau2)!=2) stop("the prior value for tau2 is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.tau2)) stop("the prior value for tau2 is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.tau2))!=0) stop("the prior value for tau2 has missing values.", call.=FALSE)    
+  prior.beta.check(prior.mean.beta, prior.var.beta, p)
+  prior.var.check(prior.tau2)
   
-
+  
+  
   # identify and error check the offset term, if it exists.
   offset <- try(model.offset(frame), silent=TRUE)
   if(class(offset)=="try-error")   stop("the offset is not numeric.", call.=FALSE)
@@ -62,21 +58,9 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
   if(!is.numeric(offset))          stop("the offset variable has non-numeric values.", call.=FALSE) 
   
   #### Format and check the MCMC quantities
-  if(is.null(burnin)) stop("the burnin argument is missing", call.=FALSE)
-  if(is.null(n.sample)) stop("the n.sample argument is missing", call.=FALSE)
-  if(!is.numeric(burnin)) stop("burn-in is not a number", call.=FALSE)
-  if(!is.numeric(n.sample)) stop("n.sample is not a number", call.=FALSE) 
-  if(!is.numeric(thin)) stop("thin is not a number", call.=FALSE)
-  if(n.sample <= 0) stop("n.sample is less than or equal to zero.", call.=FALSE)
-  if(burnin < 0) stop("burn-in is less than zero.", call.=FALSE)
-  if(thin <= 0) stop("thin is less than or equal to zero.", call.=FALSE)
-  if(n.sample <= burnin)  stop("Burn-in is greater than n.sample.", call.=FALSE)
-  if(n.sample <= thin)  stop("thin is greater than n.sample.", call.=FALSE)
-  if(burnin!=round(burnin)) stop("burnin is not an integer.", call.=FALSE) 
-  if(n.sample!=round(n.sample)) stop("n.sample is not an integer.", call.=FALSE) 
-  if(thin!=round(thin)) stop("thin is not an integer.", call.=FALSE) 
+  common.burnin.nsample.thin.check(burnin, n.sample, thin)
 
-  
+
   ## Standardise the model matrix, 
   X.standardised   <- X
   X.sd             <- apply(X, 2, sd)
@@ -106,7 +90,7 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
   
   # propose starting values for the adjacency elements (very close to 1)
   # current temporary version of the adacency is W_current
-  v                                <- logit(rtrunc(n.edges, spec = "norm", mean = 0.999, sd = 0.001, a = 0, b=1))
+  v                                <- logit(rtruncnorm(n.edges, mean = 0.999, sd = 0.001, a = 0, b=1))
   v_15                             <- v - 15
   vqform_current                   <- sum(v_15^2)
   W_current                        <- W
@@ -192,23 +176,39 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
   spam.options( "safemode" = c(F, F, F))
   
   ## Compute the blocking structure for beta     
-  if(blocksize.beta >= p){
-    n.beta.block <- 1
-    beta.beg <- 1
-    beta.fin <- p
-  } else {
-    n.standard <- 1 + floor((p-blocksize.beta) / blocksize.beta)
-    remainder <- p - n.standard * blocksize.beta 
-    if(remainder==0){
-      beta.beg <- c(1,seq((blocksize.beta+1), p, blocksize.beta))
-      beta.fin <- seq(blocksize.beta, p, blocksize.beta)
-      n.beta.block <- length(beta.beg)
-    } else {
-      beta.beg <- c(1, seq((blocksize.beta+1), p, blocksize.beta))
-      beta.fin <- c(seq((blocksize.beta), p, blocksize.beta), p)
-      n.beta.block <- length(beta.beg)
-    }
-  }         
+  #if(blocksize.beta >= p){
+  #  n.beta.block <- 1
+  #  beta.beg <- 1
+  #  beta.fin <- p
+  #} else {
+  #  n.standard <- 1 + floor((p-blocksize.beta) / blocksize.beta)
+  #  remainder <- p - n.standard * blocksize.beta 
+  #  if(remainder==0){
+  #    beta.beg <- c(1,seq((blocksize.beta+1), p, blocksize.beta))
+  #    beta.fin <- seq(blocksize.beta, p, blocksize.beta)
+  #    n.beta.block <- length(beta.beg)
+  #  } else {
+  #    beta.beg <- c(1, seq((blocksize.beta+1), p, blocksize.beta))
+  #    beta.fin <- c(seq((blocksize.beta), p, blocksize.beta), p)
+  #    n.beta.block <- length(beta.beg)
+  #  }
+  #}    
+  
+  
+  ## Compute the blocking structure for beta     
+  block.temp <- common.betablock(p)
+  beta.beg  <- block.temp[[1]]
+  beta.fin <- block.temp[[2]]
+  n.beta.block <- block.temp[[3]]
+  list.block <- as.list(rep(NA, n.beta.block*2))
+  for(r in 1:n.beta.block)
+  {
+      list.block[[r]] <- beta.beg[r]:beta.fin[r]-1
+      list.block[[r+n.beta.block]] <- length(list.block[[r]])
+  }
+  
+  
+  
   proposal.sd.beta        <- 0.01
   proposal.corr.beta      <- solve(t(X.standardised) %*% X.standardised)
   chol.proposal.corr.beta <- chol(proposal.corr.beta)     
@@ -248,7 +248,7 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
       phifirstQphilast <- qform_ST_asym(Qspace = Q.space.trip, Qtime = diag.time, phi1 = phifirst, phi2 = philast, nsites = n.sites) 
       mu_alpha         <- phifirstQphilast/philastQphilast
       mu_sigmasq       <- tau/philastQphilast
-      alpha            <- rtrunc(n=1, spec="norm", a=10^-5, b=1 - 10^-5,  mean=mu_alpha, sd = sqrt(mu_sigmasq))
+      alpha            <- rtruncnorm(n=1, a=10^-5, b=1 - 10^-5,  mean=mu_alpha, sd = sqrt(mu_sigmasq))
       Q.time.trip      <- update_Qtime(Q.time.trip, alpha, time.last.diag - 1)
       phiQphi          <- qform_ST(Qspace = Q.space.trip, Qtime = Q.time.trip, phi = phi, nsites = n.sites)   
       detTime          <- determinant(Q.time, logarithm = TRUE)
@@ -258,7 +258,7 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
     # Gibbs update of tau_v
     tau_scale  <- vqform_current/2 + prior.tau2[2]
     tau_v      <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_v.shape, scale=(1/tau_scale))
-    v.proposal <- rtrunc(n = n.edges, spec="norm", a=-15, b=15,  mean = v, sd = W.tune)
+    v.proposal <- rtruncnorm(n = n.edges, a=-15, b=15,  mean = v, sd = W.tune)
     for(i in 1:n.blocks){
       # propose new v for the i^th block
       vnew                                 <- v
@@ -300,30 +300,54 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
     }
     
     # update BETA
-    proposal      <- beta_par + (sqrt(proposal.sd.beta)* t(chol.proposal.corr.beta)) %*% rnorm(p)   
-    proposal.beta <- beta_par
-    offset.temp   <- offset + as.numeric(phi)       
-    for(r in 1:n.beta.block){
-      proposal.beta[beta.beg[r]:beta.fin[r]] <- proposal[beta.beg[r]:beta.fin[r]]
-      prob <- poissonbetaupdate(X=X.standardised, nsites=k, p=p, beta=beta_par, proposal=proposal.beta, 
-                                offset=offset.temp, y=y, prior_meanbeta=prior.mean.beta, prior_varbeta=prior.var.beta, which.miss)
-      if(prob > runif(1)){
-        beta_par[beta.beg[r]:beta.fin[r]] <- proposal.beta[beta.beg[r]:beta.fin[r]]
-        accept[1] <- accept[1] + 1  
-      } else {
-        proposal.beta[beta.beg[r]:beta.fin[r]] <- beta_par[beta.beg[r]:beta.fin[r]]
-      }
-    }
-    accept[2] <- accept[2] + n.beta.block    
-    XB        <- X.standardised %*% beta_par
+    #proposal      <- beta_par + (sqrt(proposal.sd.beta)* t(chol.proposal.corr.beta)) %*% rnorm(p)   
+    #proposal.beta <- beta_par
+    #offset.temp   <- offset + as.numeric(phi)       
+    #for(r in 1:n.beta.block){
+    #  proposal.beta[beta.beg[r]:beta.fin[r]] <- proposal[beta.beg[r]:beta.fin[r]]
+    #  prob <- poissonbetaupdate(X=X.standardised, nsites=k, p=p, beta=beta_par, proposal=proposal.beta, 
+    #                            offset=offset.temp, y=y, prior_meanbeta=prior.mean.beta, prior_varbeta=prior.var.beta, which.miss)
+    #  if(prob > runif(1)){
+    #    beta_par[beta.beg[r]:beta.fin[r]] <- proposal.beta[beta.beg[r]:beta.fin[r]]
+    #    accept[1] <- accept[1] + 1  
+    #  } else {
+    #    proposal.beta[beta.beg[r]:beta.fin[r]] <- beta_par[beta.beg[r]:beta.fin[r]]
+    #  }
+    #}
+    #accept[2] <- accept[2] + n.beta.block    
+    #XB        <- X.standardised %*% beta_par
+    
+    
+    
+    offset.temp   <- offset + as.numeric(phi)         
+        if(p>2)
+        {
+        temp <- poissonbetaupdateMALA(X.standardised, k, p, beta_par, offset.temp, y, prior.mean.beta, prior.var.beta, which.miss, n.beta.block, proposal.sd.beta, list.block)
+        }else
+        {
+        temp <- poissonbetaupdateRW(X.standardised, k, p, beta_par, offset.temp, y, prior.mean.beta, prior.var.beta, which.miss, proposal.sd.beta)
+        }
+    beta_par <- temp[[1]]
+    accept[1] <- accept[1] + temp[[2]]
+    accept[2] <- accept[2] + n.beta.block  
+    XB <- X.standardised %*% beta_par     
+    
+    
     
     # update PHI using one at a time M-H sampling
     nneighbours   <- diag.spam(Q.space)
     W_current     <- diag(nneighbours) - as.matrix(Q.space)
-    phi_update    <- SPTICARphiVarb(W = W_current, nsites = n.sites, ntimes = n.time, phiVarb = phi, 
-                                    nneighbours = nneighbours, tau = tau, y = y,  E = offset, 
-                                    phiVarb_tune = phi_tune, alpha = alpha, XB = XB)
-    
+        if(MALA)
+        {
+            phi_update    <- SPTICARphiVarbMALA(W = W_current, nsites = n.sites, ntimes = n.time, phiVarb = phi, 
+                                                nneighbours = nneighbours, tau = tau, y = y,  E = offset, 
+                                                phiVarb_tune = phi_tune, alpha = alpha, XB = XB)        
+        }else
+        {
+            phi_update    <- SPTICARphiVarb(W = W_current, nsites = n.sites, ntimes = n.time, phiVarb = phi, 
+                                            nneighbours = nneighbours, tau = tau, y = y,  E = offset, 
+                                            phiVarb_tune = phi_tune, alpha = alpha, XB = XB)    
+        }
     phi       <- phi_update[[2]]
     phi       <- phi - mean(phi)
     accept[3] <- accept[3] + phi_update[[1]][2]
@@ -334,7 +358,7 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
     if(!is.null(rhofix)){
       proposal.rho <- rhofix
     } else {
-      proposal.rho           <- rtrunc(n = 1, spec="norm", a=0, b=1, mean = rho, sd = rho.tune) 
+      proposal.rho           <- rtruncnorm(n = 1, a=0, b=1, mean = rho, sd = rho.tune) 
     }
     Q.space.trip.prop      <- updatetriplets_rho(trips = Q.space.trip, nsites = n.sites, rho_old = rho, rho_new = proposal.rho, fixedridge = fixedridge)   
     Q.space.prop@entries   <- Q.space.trip.prop[perm,3]
@@ -396,10 +420,10 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
         }
         
         #### beta tuning parameter
-        if(accept.beta > 40)
+        if(accept.beta > 50)
         {
             proposal.sd.beta <- proposal.sd.beta + 0.1 * proposal.sd.beta
-        }else if(accept.beta < 20)              
+        }else if(accept.beta < 40)              
         {
             proposal.sd.beta <- proposal.sd.beta - 0.1 * proposal.sd.beta
         }else
@@ -505,24 +529,8 @@ poisson.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin 
   
   
   #### transform the parameters back to the origianl covariate scale.
-  samples.beta.orig <- samples.beta
-  for(r in 1:p)
-  {
-    if(X.indicator[r]==1)
-    {
-      samples.beta.orig[ ,r] <- samples.beta[ ,r] / X.sd[r]
-    }else if(X.indicator[r]==2 & p>1)
-    {
-      X.transformed <- which(X.indicator==1)
-      samples.temp <- as.matrix(samples.beta[ ,X.transformed])
-      for(s in 1:length(X.transformed))
-      {
-        samples.temp[ ,s] <- samples.temp[ ,s] * X.mean[X.transformed[s]]  / X.sd[X.transformed[s]]
-      }
-      intercept.adjustment <- apply(samples.temp, 1,sum) 
-      samples.beta.orig[ ,r] <- samples.beta[ ,r] - intercept.adjustment
-    }
-  }
+  samples.beta.orig <- common.betatransform(samples.beta, X.indicator, X.mean, X.sd, p, FALSE)
+
   
   #### Create a summary object
   samples.beta.orig       <- mcmc(samples.beta.orig)

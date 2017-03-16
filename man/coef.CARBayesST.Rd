@@ -7,7 +7,7 @@
 }
 \description{
     This function takes a CARBayesST object and returns the vector of estimated
-    regression coefficients.
+    regression coefficients based on posterior medians.
 }
 
 \usage{

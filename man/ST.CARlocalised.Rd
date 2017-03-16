@@ -18,13 +18,13 @@
     for localised smoothness as some pairs of neighbouring areas or time periods can have similar 
     values while other neighbouring pairs have different values. Furter details are given in 
     Lee and Lawson (2016) and in the vignette accompanying this package. Inference is conducted in 
-    a Bayesian setting using Markov chain Monte Carlo (McMC) simulation. 
+    a Bayesian setting using Markov chain Monte Carlo (MCMC) simulation. 
 }
 
 \usage{
     ST.CARlocalised(formula, family, data=NULL,  G, trials=NULL, W, burnin, n.sample, 
     thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.delta=NULL, 
-    prior.tau2=NULL, verbose=TRUE)
+    prior.tau2=NULL, MALA=TRUE, verbose=TRUE)
 }
 
 
@@ -55,20 +55,20 @@
         total number of trials for each area and time period. Only used if family=`binomial'. 
     }
         \item{W}{
-        A K by K neighbourhood matrix (where K is the number of spatial units). 
+        A non-negative K by K neighbourhood matrix (where K is the number of spatial units). 
         Typically a binary specification is used, where the jkth element equals one
         if areas (j, k) are spatially close (e.g. share a common border) and is zero 
         otherwise. The matrix can be non-binary, but each row must contain at least 
         one non-zero entry.
     }  
         \item{burnin}{
-        The number of McMC samples to discard as the burn-in period.
+        The number of MCMC samples to discard as the burn-in period.
     }
         \item{n.sample}{
-        The number of McMC samples to generate.
+        The number of MCMC samples to generate.
     }
         \item{thin}{
-        The level of thinning to apply to the McMC samples to reduce their temporal 
+        The level of thinning to apply to the MCMC samples to reduce their temporal 
         autocorrelation. Defaults to 1 (no thinning).
     }
         \item{prior.mean.beta}{
@@ -86,6 +86,10 @@
         The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
         prior for the random effect variance tau2. Defaults to c(1, 0.01).  
     }
+        \item{MALA}{
+        Logical, should the function use MALA (TRUE, default) or simple random walk (FALSE) 
+        updates for the random effects.  
+    }
         \item{verbose}{
         Logical, should the function update the user on its progress.  
     }
@@ -94,7 +98,7 @@
 
 \value{
     \item{summary.results }{A summary table of the parameters.}
-    \item{samples }{A list containing the McMC samples from the model.}
+    \item{samples }{A list containing the MCMC samples from the model.}
     \item{fitted.values }{A vector of fitted values for each area and time period.}
     \item{residuals }{A matrix with 3 columns where each column is a type of 
         residuals for each area and time period. The types are "response" (raw), 
@@ -114,7 +118,7 @@ estimated loglikelihood.}
 
 \references{
 Lee, D and Lawson, C  (2016). Quantifying the spatial inequality and temporal trends in
-maternal smoking rates in Glasgow, Annals of Applied Statistics, to appear.
+maternal smoking rates in Glasgow, Annals of Applied Statistics, 10, 1427-1446.
 }
 
 \author{
@@ -135,17 +139,12 @@ Grid <- expand.grid(x.easting, x.northing)
 K <- nrow(Grid)
 N <- 10
 N.all <- N * K
+   
     
 #### set up spatial neighbourhood matrix W
+distance <- as.matrix(dist(Grid))
 W <-array(0, c(K,K))
-    for(i in 1:K)
-    {
-        for(j in 1:K)
-        {
-        temp <- (Grid[i,1] - Grid[j,1])^2 + (Grid[i,2] - Grid[j,2])^2
-        if(temp==1)  W[i,j] <- 1 
-        }    
-    }
+W[distance==1] <-1 	
 
 
 #### Simulate the elements in the linear predictor and the data
@@ -163,6 +162,7 @@ jump <- rep(c(rep(2, 70), rep(4, 30)),N)
 LP <- jump + phi
 fitted <- exp(LP)
 Y <- rpois(n=N.all, lambda=fitted)
+
 
 #### Run the model     
 \dontrun{model <- ST.CARlocalised(formula=Y~1, family="poisson", G=3, W=W, burnin=10000,

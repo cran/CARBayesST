@@ -1,9 +1,7 @@
 gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, prior.nu2 = NULL, rhofix = NULL, epsilon = 0, verbose = TRUE)
     { 
-  #### Check on the verbose option
-  if(is.null(verbose))     verbose = TRUE     
-  if(!is.logical(verbose)) stop("the verbose option is not logical.", call.=FALSE)
-  if(verbose) cat("Setting up the model\n"); a<-proc.time()
+    #### Verbose
+    a <- common.verbose(verbose)  
   
   blocksize.beta <- 5
   blocksize.v    <- 10
@@ -19,6 +17,8 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
 
   logit     <- function(p) log(p/(1-p))
   inv_logit <- function(v) 1/(1+exp(-v))
+  
+  
   
   # interpret the formula
   frame <- try(suppressWarnings(model.frame(formula, data = data, na.action=na.pass)), silent=TRUE)
@@ -39,26 +39,13 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
   
   #### Check and specify the priors
   if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
-  if(length(prior.mean.beta)!=p) stop("the vector of prior means for beta is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.mean.beta)) stop("the vector of prior means for beta is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.mean.beta))!=0) stop("the vector of prior means for beta has missing values.", call.=FALSE)       
-  
   if(is.null(prior.var.beta)) prior.var.beta <- rep(1000, p)
-  if(length(prior.var.beta)!=p) stop("the vector of prior variances for beta is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.var.beta)) stop("the vector of prior variances for beta is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.var.beta))!=0) stop("the vector of prior variances for beta has missing values.", call.=FALSE)    
-  if(min(prior.var.beta) <=0) stop("the vector of prior variances has elements less than zero", call.=FALSE)
-  prior.prec.beta <- diag.spam(1/prior.var.beta, nrow = length(prior.var.beta))
-  
   if(is.null(prior.tau2)) prior.tau2 <- c(1, 0.01)
-  if(length(prior.tau2)!=2) stop("the prior value for tau2 is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.tau2)) stop("the prior value for tau2 is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.tau2))!=0) stop("the prior value for tau2 has missing values.", call.=FALSE)    
-  
   if(is.null(prior.nu2)) prior.nu2 <- c(1, 0.01)
-  if(length(prior.nu2)!=2) stop("the prior value for nu2 is the wrong length.", call.=FALSE)    
-  if(!is.numeric(prior.nu2)) stop("the prior value for nu2 is not numeric.", call.=FALSE)    
-  if(sum(is.na(prior.nu2))!=0) stop("the prior value for nu2 has missing values.", call.=FALSE)   
+  prior.beta.check(prior.mean.beta, prior.var.beta, p)
+  prior.var.check(prior.tau2)
+  prior.var.check(prior.nu2)
+  prior.prec.beta <- diag.spam(1/prior.var.beta, nrow = length(prior.var.beta))
   
   # identify and error check the offset term, if it exists.
   offset <- try(model.offset(frame), silent=TRUE)
@@ -68,19 +55,7 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
   if(!is.numeric(offset))          stop("the offset variable has non-numeric values.", call.=FALSE) 
   
   #### Format and check the MCMC quantities
-  if(is.null(burnin)) stop("the burnin argument is missing", call.=FALSE)
-  if(is.null(n.sample)) stop("the n.sample argument is missing", call.=FALSE)
-  if(!is.numeric(burnin)) stop("burn-in is not a number", call.=FALSE)
-  if(!is.numeric(n.sample)) stop("n.sample is not a number", call.=FALSE) 
-  if(!is.numeric(thin)) stop("thin is not a number", call.=FALSE)
-  if(n.sample <= 0) stop("n.sample is less than or equal to zero.", call.=FALSE)
-  if(burnin < 0) stop("burn-in is less than zero.", call.=FALSE)
-  if(thin <= 0) stop("thin is less than or equal to zero.", call.=FALSE)
-  if(n.sample <= burnin)  stop("Burn-in is greater than n.sample.", call.=FALSE)
-  if(n.sample <= thin)  stop("thin is greater than n.sample.", call.=FALSE)
-  if(burnin!=round(burnin)) stop("burnin is not an integer.", call.=FALSE) 
-  if(n.sample!=round(n.sample)) stop("n.sample is not an integer.", call.=FALSE) 
-  if(thin!=round(thin)) stop("thin is not an integer.", call.=FALSE) 
+  common.burnin.nsample.thin.check(burnin, n.sample, thin)
   
   ## Check for linearly related columns
   cor.X <- suppressWarnings(cor(X))
@@ -127,7 +102,7 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
   
   # propose starting values for the adjacency elements (very close to 1)
   # current temporary version of the adacency is W_current
-  v                                <- logit(rtrunc(n.edges, spec = "norm", mean = 0.999, sd = 0.001, a = 0, b=1))
+  v                                <- logit(rtruncnorm(n.edges, mean = 0.999, sd = 0.001, a = 0, b=1))
   v_15                             <- v - 15
   vqform_current                   <- sum(v_15^2)
   W_current                        <- W
@@ -266,7 +241,7 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
       phifirstQphilast <- qform_ST_asym(Qspace = Q.space.trip, Qtime = diag.time, phi1 = phifirst, phi2 = philast, nsites = n.sites) 
       mu_alpha         <- phifirstQphilast/philastQphilast
       mu_sigmasq       <- tau/philastQphilast
-      alpha            <- rtrunc(n=1, spec="norm", a=10^-5, b=1 - 10^-5,  mean=mu_alpha, sd = sqrt(mu_sigmasq))
+      alpha            <- rtruncnorm(n=1, a=10^-5, b=1 - 10^-5,  mean=mu_alpha, sd = sqrt(mu_sigmasq))
       Q.time.trip      <- update_Qtime(Q.time.trip, alpha, time.last.diag - 1)
       phiQphi          <- qform_ST(Qspace = Q.space.trip, Qtime = Q.time.trip, phi = phi, nsites = n.sites)   
       detTime          <- determinant(Q.time, logarithm = TRUE)
@@ -276,7 +251,7 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
     # Gibbs update of tau_v
     tau_scale  <- vqform_current/2 + prior.tau2[2]
     tau_v      <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_v.shape, scale=(1/tau_scale))
-    v.proposal <- rtrunc(n = n.edges, spec="norm", a=-15, b=15,  mean = v, sd = W.tune)
+    v.proposal <- rtruncnorm(n = n.edges, a=-15, b=15,  mean = v, sd = W.tune)
     for(i in 1:n.blocks){
       # propose new v for the i^th block
       vnew                                 <- v
@@ -341,7 +316,7 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
     if(!is.null(rhofix)){
       proposal.rho <- rhofix
     } else {
-      proposal.rho           <- rtrunc(n = 1, spec="norm", a=0, b=1, mean = rho, sd = rho.tune) 
+      proposal.rho           <- rtruncnorm(n = 1, a=0, b=1, mean = rho, sd = rho.tune) 
     }
     Q.space.trip.prop      <- updatetriplets_rho(trips = Q.space.trip, nsites = n.sites, rho_old = rho, rho_new = proposal.rho, fixedridge = fixedridge)   
     Q.space.prop@entries   <- Q.space.trip.prop[perm,3]
@@ -493,24 +468,8 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
   
   
   #### transform the parameters back to the origianl covariate scale.
-  samples.beta.orig <- samples.beta
-  for(r in 1:p)
-  {
-    if(X.indicator[r]==1)
-    {
-      samples.beta.orig[ ,r] <- samples.beta[ ,r] / X.sd[r]
-    }else if(X.indicator[r]==2 & p>1)
-    {
-      X.transformed <- which(X.indicator==1)
-      samples.temp <- as.matrix(samples.beta[ ,X.transformed])
-      for(s in 1:length(X.transformed))
-      {
-        samples.temp[ ,s] <- samples.temp[ ,s] * X.mean[X.transformed[s]]  / X.sd[X.transformed[s]]
-      }
-      intercept.adjustment <- apply(samples.temp, 1,sum) 
-      samples.beta.orig[ ,r] <- samples.beta[ ,r] - intercept.adjustment
-    }
-  }
+  samples.beta.orig <- common.betatransform(samples.beta, X.indicator, X.mean, X.sd, p, FALSE)
+  
   
   #### Create a summary object  
   samples.beta.orig       <- mcmc(samples.beta.orig)
