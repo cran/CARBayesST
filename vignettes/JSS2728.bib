@@ -9,7 +9,7 @@
 
 @article{JSSv063i15,
    author = {Khandoker Bakar and Sujit Sahu},
-   title = {spTimer: Spatio-Temporal Bayesian Modeling Using R},
+   title = {\pkg{spTimer}: Spatio-Temporal Bayesian Modeling Using \proglang{R}},
    journal = {Journal of Statistical Software},
    volume = {63},
    number = {1},
@@ -19,7 +19,7 @@
 
 @article{JSSv067i01,
    author = {Douglas Bates and Martin M{\"a}chler and Ben Bolker and Steve Walker},
-   title = {Fitting Linear Mixed-Effects Models Using lme4},
+   title = {Fitting Linear Mixed-Effects Models Using \pkg{lme4}},
    journal = {Journal of Statistical Software},
    volume = {67},
    number = {1},
@@ -59,7 +59,7 @@
 
 @BOOK{bivand2013,
   AUTHOR =       "Bivand, R and Pebesma, E and {Gomez-Rubio}, V",
-  TITLE =        "Applied {S}patial {D}ata {A}nalysis with R",
+  TITLE =        "Applied {S}patial {D}ata {A}nalysis with \proglang{R}",
   PUBLISHER =    "Springer-{V}erlag, {New York}",
   YEAR =         "2013",
   edition =      "2nd",
@@ -77,14 +77,22 @@
 
 
 @Manual{carbayesdata,
-    title = {CARBayesdata: Data Used in the Vignettes Accompanying the CARBayes and
-CARBayesST Packages},
+    title = {\pkg{CARBayesdata}: Data Used in the Vignettes Accompanying the \pkg{CARBayes} and
+\pkg{CARBayesST} Packages},
     author = {Duncan Lee},
     year = {2016},
-    note = {R package version 2.0},
+    note = {\proglang{R} package version 2.0},
 }
   
-  
+@ARTICLE{celeux2006,
+  AUTHOR =       "Celeux, G and Forbes, F and Robert, C and Titterington, D",
+  TITLE =         "Deviance {I}nformation {C}riteria for {M}issing {D}ata {M}odels",
+  JOURNAL =      "Bayesian {A}nalysis",
+  YEAR =         "2006",
+  volume =       "1",
+  pages =        "651-674",
+}
+
 @ARTICLE{charras2012,
   AUTHOR =       "Charras-Garrido, M and Abrial, D and de Goer, J",
   TITLE =        "Classification {M}ethod for {D}isease {R}isk {M}apping {B}ased on {D}iscrete {H}idden {M}arkov {R}andom {F}ields",
@@ -104,9 +112,9 @@ pages={1008--1022},
 }
 
 @Article{coda2006,
-    title = {CODA: Convergence Diagnosis and Output Analysis for MCMC},
+    title = {\pkg{CODA}: Convergence Diagnosis and Output Analysis for MCMC},
     author = {Martyn Plummer and Nicky Best and Kate Cowles and Karen Vines},
-    journal = {R News},
+    journal = {\proglang{R} News},
     year = {2006},
     volume = {6},
     number = {1},
@@ -125,16 +133,16 @@ pages={1008--1022},
 }
 
 @Manual{dplyr2015,
-    title = {dplyr: A Grammar of Data Manipulation},
+    title = {\pkg{dplyr}: A Grammar of Data Manipulation},
     author = {Hadley Wickham and Romain Francois},
     year = {2015},
-    note = {R package version 0.4.3},
+    note = {\proglang{R} package version 0.4.3},
     url = {https://CRAN.R-project.org/package=dplyr},
 }
 
 @article{JSSv027i02,
    author = {Yves Croissant and Giovanni Millo},
-   title = {Panel Data Econometrics in R: The plm Package},
+   title = {Panel Data Econometrics in \proglang{R}: The \pkg{plm} Package},
    journal = {Journal of Statistical Software},
    volume = {27},
    number = {1},
@@ -145,7 +153,7 @@ pages={1008--1022},
 
 @ARTICLE{eddelbuettel2011,
  AUTHOR =       "Eddelbuettel, D and Francois, R",
- TITLE =        "Rcpp: {S}eamless {R} and {C}++ {I}ntegration",
+ TITLE =        "\pkg{Rcpp}: {S}eamless \proglang{R} and \proglang{C++} {I}ntegration",
  JOURNAL =      "Journal of {S}tatistical {S}oftware",
  YEAR =         "2011",
  volume =       "40",
@@ -155,7 +163,7 @@ pages={1008--1022},
 
 @article{JSSv063i13,
    author = {Andrew Finley and Sudipto Banerjee and Alan Gelfand},
-   title = {spBayes for Large Univariate and Multivariate Point-Referenced Spatio-Temporal Data Models},
+   title = {\pkg{spBayes} for Large Univariate and Multivariate Point-Referenced Spatio-Temporal Data Models},
    journal = {Journal of Statistical Software},
    volume = {63},
    number = {1},
@@ -172,6 +180,17 @@ pages={1008--1022},
 }
 
 
+@article{gerber2015,
+   author = {Gerber, F and Furrer, R},
+   title = {Pitfalls in the Implementation of Bayesian Hierarchical Modeling of Areal Count Data: An Illustration Using BYM and Leroux Models},
+   journal = {Journal of Statistical Software},
+   volume = {63},
+   number = {1},
+   year = {2015},
+    url = {https://www.jstatsoft.org/article/view/v063c01}
+}
+
+
 @INPROCEEDINGS{geweke1992,
     author = {John Geweke},
     title = {Evaluating the Accuracy of Sampling-Based Approaches to the Calculation of Posterior Moments},
@@ -181,7 +200,15 @@ pages={1008--1022},
     publisher = {University Press}
 }
 
-
+@Manual{gtools,
+    title = {gtools: Various R Programming Tools},
+    author = {Gregory R. Warnes and Ben Bolker and Thomas Lumley},
+    year = {2018},
+    note = {R package version 3.8.1},
+    url = {https://CRAN.R-project.org/package=gtools},
+  }
+  
+  
 @ARTICLE{haining2010,
   AUTHOR =       "Haining, R and Li, G and Maheswaran, R and Blangiardo, M and Law, J and Best, N and Richardson, S",
   TITLE =        "Inference from Ecological Models: Estimating the Relative Risk of Stroke from Air Pollution Exposure Using Small Area Data",
@@ -201,6 +228,15 @@ pages={1008--1022},
   pages =        "2555-2567",
 }
 
+@Manual{leaflet,
+    title = {leaflet: Create Interactive Web Maps with the JavaScript 'Leaflet'
+Library},
+    author = {Joe Cheng and Bhaskar Karambelkar and Yihui Xie},
+    year = {2018},
+    note = {R package version 2.0.1},
+    url = {https://CRAN.R-project.org/package=leaflet},
+  }
+  
 @ARTICLE{lee2009,
  AUTHOR =       "Lee, D and Ferguson, C and Mitchell, R",
  TITLE =        "Air Pollution and Health in {S}cotland: A Multicity Study",
@@ -212,7 +248,7 @@ pages={1008--1022},
 
 @ARTICLE{lee2013,
  AUTHOR =       "Lee, D",
- TITLE =        "CARBayes: {A}n {R} {P}ackage for {B}ayesian {S}patial {M}odelling with {C}onditional {A}utoregressive {P}riors",
+ TITLE =        "\pkg{CARBayes}: {A}n \proglang{R} {P}ackage for {B}ayesian {S}patial {M}odelling with {C}onditional {A}utoregressive {P}riors",
  JOURNAL =      "Journal of {S}tatistical {S}oftware",
  YEAR =         "2013",
  volume =       "55",
@@ -237,6 +273,17 @@ pages={1008--1022},
   YEAR =         "2016",
   volume =       "10",
   pages =        "1427-1446",
+}
+
+@article{lee2018,
+   author = {Duncan Lee and Alastair Rushworth and Gary Napier},
+   title = {Spatio-Temporal Areal Unit Modeling in R with Conditional Autoregressive Priors Using the CARBayesST Package},
+   journal = {Journal of Statistical Software, Articles},
+   volume = {84},
+   number = {9},
+   year = {2018},
+   pages = {1--39},
+   doi = {10.18637/jss.v084.i09},
 }
 
 
@@ -272,16 +319,16 @@ url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4",
 }
 
   @Manual{maptools2015,
-    title = {maptools: Tools for Reading and Handling Spatial Objects},
+    title = {\pkg{maptools}: Tools for Reading and Handling Spatial Objects},
     author = {Roger Bivand and Nicholas Lewin-Koh},
     year = {2015},
-    note = {R package version 0.8-36},
+    note = {\proglang{R} package version 0.8-36},
     url = {https://CRAN.R-project.org/package=maptools},
   }
   
   
 @Book{mass2002,
-    title = {Modern Applied Statistics with S},
+    title = {Modern Applied Statistics with \proglang{S}},
     author = {W. N. Venables and B. D. Ripley},
     publisher = {Springer-{V}erlag, {N}ew {Y}ork},
     edition = {Fourth},
@@ -291,15 +338,15 @@ url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4",
   
   
   @Manual{matrixcalc2012,
-    title = {matrixcalc: Collection of Functions for Matrix Calculations},
+    title = {\pkg{matrixcalc}: Collection of Functions for Matrix Calculations},
     author = {Frederick Novomestky},
     year = {2012},
-    note = {R package version 1.0-3},
+    note = {\proglang{R} package version 1.0-3},
     url = {https://CRAN.R-project.org/package=matrixcalc},
   }
   
 @Article{millo2012,
-    title = {{splm}: Spatial Panel Data Models in {R}},
+    title = {\pkg{splm}: Spatial Panel Data Models in \proglang{R}},
     author = {Giovanni Millo and Gianfranco Piras},
     journal = {Journal of Statistical Software},
     year = {2012},
@@ -329,18 +376,29 @@ url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4",
   pages =        "1185-1200",
 }
 
+@article{napier2018,
+author = {Napier, Gary and Lee, Duncan and Robertson, Chris and Lawson, Andrew},
+title = {A Bayesian space–time model for clustering areal units based on their disease trends},
+journal = {Biostatistics},
+volume = {},
+number = {to appear},
+pages = {kxy024},
+year = {2018},
+doi = {10.1093/biostatistics/kxy024},
+}
+
 
 @ARTICLE{paul2016,
  AUTHOR =       "Paul, M and Meyer, S",
- TITLE =        "hhh4: An Endemic-Epidemic Modelling Framework for Infectious Disease Counts, http://CRAN.R-project.org/package=surveillance",
+ TITLE =        "\pkg{hhh4}: An Endemic-Epidemic Modelling Framework for Infectious Disease Counts, http://CRAN.R-project.org/package=surveillance",
  year =         "2016",
 }
 
 @Manual{pinheiro2015,
-    title = {{nlme}: Linear and Nonlinear Mixed Effects Models},
-    author = {Jose Pinheiro and Douglas Bates and Saikat DebRoy and Deepayan Sarkar and {R Core Team}},
+    title = {\pkg{nlme}: Linear and Nonlinear Mixed Effects Models},
+    author = {Jose Pinheiro and Douglas Bates and Saikat DebRoy and Deepayan Sarkar and {\proglang{R} Core Team}},
     year = {2015},
-    note = {R package version 3.1-121},
+    note = {\proglang{R} package version 3.1-121},
     url = {http://CRAN.R-project.org/package=nlme},
 }
 
@@ -364,7 +422,7 @@ url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4",
 
 @BOOK{robert2010,
   AUTHOR =       "Robert,C and Casello, G",
-  TITLE =        "Introducing Monte Carlo Methods with R",
+  TITLE =        "Introducing Monte Carlo Methods with \proglang{R}",
   PUBLISHER =    "Springer",
   YEAR =         "2010",
   edition =      "1st",
@@ -389,6 +447,18 @@ url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4",
   pages =        "319-392",
 }
 
+
+@book{GMRFbook,
+    AUTHOR = {H. Rue and L. Held},
+     TITLE = {Gaussian {M}arkov Random Fields: {T}heory and Applications},
+    SERIES = {Monographs on Statistics and Applied Probability},
+    VOLUME = {104},
+ PUBLISHER = {Chapman \& Hall},
+   ADDRESS = {London},
+      YEAR = 2005,
+}
+
+
 @ARTICLE{rushworth2014,
   AUTHOR =       "Rushworth, A and Lee, D and Mitchell, R",
   TITLE =        "A Spatio-Temporal Model for Estimating the Long-Term Effects of Air Pollution on Respiratory Hospital Admissions in {G}reater {L}ondon",
@@ -408,16 +478,16 @@ url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4",
 }
 
 @Manual{schabenberger2009,
-    title = {spatcounts: Spatial Count Regression},
+    title = {\pkg{spatcounts}: Spatial Count Regression},
     author = {Holger Schabenberger},
     year = {2009},
-    note = {R package version 1.1},
+    note = {\proglang{R} package version 1.1},
     url = {http://CRAN.R-project.org/package=spatcounts},
   }
   
   
  @Article{spam2010,
-    title = {{spam}: A Sparse Matrix {R} Package with Emphasis on {MCMC} Methods for {G}aussian {M}arkov Random Fields},
+    title = {\pkg{spam}: A Sparse Matrix \proglang{R} Package with Emphasis on {MCMC} Methods for {G}aussian {M}arkov Random Fields},
     author = {Reinhard Furrer and Stephan R. Sain},
     journal = {Journal of Statistical Software},
     year = {2010},
@@ -437,10 +507,19 @@ url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4",
   pages =        "583-639",
 }
 
+ @ARTICLE{tanner1987,
+  AUTHOR =       "Tanner, M and Wong, W",
+  TITLE =        "The Calculation of Posterior Distributions by Data Augmentation",
+  JOURNAL =      "Journal of the {A}merican {S}tatistical {A}ssociation",
+  YEAR =         "1987",
+  volume =       "82",
+  pages =        "528-540",
+}
+
 @Article{testthat,
     author = {Hadley Wickham},
-    title = {testthat: Get Started with Testing},
-    journal = {The R Journal},
+    title = {\pkg{testthat}: Get Started with Testing},
+    journal = {The \proglang{R} Journal},
     year = {2011},
     volume = {3},
     pages = {5--10},
@@ -450,21 +529,31 @@ url="http://dx.doi.org/10.1007/978-1-4612-1284-3_4",
 
 
 @Manual{truncnorm2014,
-    title = {truncnorm: Truncated normal distribution},
+    title = {\pkg{truncnorm}: Truncated normal distribution},
     author = { Heike Trautmann and Detlef Steuer and Olaf Mersmann and Björn Bornkamp},
     year = {2014},
-    note = {R package version 1.0-7},
+    note = {\proglang{R} package version 1.0-7},
     url = {https://CRAN.R-project.org/package=truncnorm},
 }
   
 @Manual{truncdist2012,
-    title = {truncdist: Truncated Random Variables},
+    title = {\pkg{truncdist}: Truncated Random Variables},
     author = {Frederick Novomestky and Saralees Nadarajah},
     year = {2012},
-    note = {R package version 1.0-1},
+    note = {\proglang{R} package version 1.0-1},
     url = {https://CRAN.R-project.org/package=truncdist},
   }
-  
+
+@ARTICLE{ugarte2004,
+ AUTHOR =       "Ugarte, M and Ibanez, B and Militino, A",
+ TITLE =        "Testing for {P}oisson {Z}ero {I}nflation in {D}isese {M}apping",
+ JOURNAL =      "Biometrical {J}ournal",
+ YEAR =         "2004",
+ volume =       "46",
+ pages =        "526-539",
+}
+
+
 @ARTICLE{wakefield2007,
  AUTHOR =       "Wakefield, J",
  TITLE =        "Disease Mapping and Spatial Regression with Count Data",
