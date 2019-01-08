@@ -1,4 +1,4 @@
-f362cb4af87faaaa0f09673e3f567f28 *DESCRIPTION
+46cc4317bd0d0406bd727a04b73871bf *DESCRIPTION
 7edd7824bd9a2ffd8a387298ac1b93a2 *NAMESPACE
 9ca8ca77bbc10a998fc01d2f8a5545ef *R/RcppExports.R
 c134e567e3b7af07470a06bd2ef43e67 *R/ST.CARadaptive.R
@@ -31,14 +31,14 @@ d5a72a327691b8ca21cc38be60835881 *R/poisson.CARadaptive.R
 ac73bededce82d562006c15f9e3e3f92 *R/poisson.CARlinear.R
 9094eae921fa6cf94514c7a09b34c200 *R/poisson.CARlocalised.R
 c71fd228813f473d251d5a31fb3e8708 *R/poisson.CARsepspatial.R
-bc8db1c84de91f5e94c8b283fd971e5b *R/print.CARBayesST.R
+46f918cd9e0be22bfd420387c68d99fb *R/print.CARBayesST.R
 d9ae226961de601526fd6c21fbbf2ad8 *R/residuals.CARBayesST.R
 02cb0ec76bf9c7f4d32730bb494e0565 *build/vignette.rds
 fc550cb5ef6d49c74e34c8c603190b26 *inst/CITATION
-ed49fa388ea09aad7643a987e20a0e7e *inst/doc/CARBayesST.R
-095bcb13582f21d35f239bb4e2cfb1fd *inst/doc/CARBayesST.Rnw
-e2d536c76c366b750e8c0e622181b5f6 *inst/doc/CARBayesST.pdf
-2c299a71930d5d25cc695107960c5b57 *man/CARBayesST-package.Rd
+5a65b03a21734dd1564f39da6c8622fc *inst/doc/CARBayesST.R
+d9cc2f741272e153e0a11e76664d3717 *inst/doc/CARBayesST.Rnw
+577fdd2aef8d593fadf2db2c47c037a8 *inst/doc/CARBayesST.pdf
+4a3caa793024ddbcc0046e8c2b15bc6e *man/CARBayesST-package.Rd
 6c5290901c7316292591195815a92ec8 *man/ST.CARadaptive.Rd
 2433fcf49f36dc3c8590bb9095764fa7 *man/ST.CARanova.Rd
 cc61ae89dbbd8ab72a0fa72eec7d38a8 *man/ST.CARar.Rd
@@ -59,7 +59,7 @@ a14a4c950979d34372463413075dbc45 *src/RcppExports.cpp
 0a79d57f9924ad97d72fe3586cae4b23 *tests/testthat/test-binomial.R
 9869d0f466ff47c6699d211ecb05b7a9 *tests/testthat/test-gaussian.R
 92a377bf18f151e701dd247bc08eaef7 *tests/testthat/test-poisson.R
-095bcb13582f21d35f239bb4e2cfb1fd *vignettes/CARBayesST.Rnw
+d9cc2f741272e153e0a11e76664d3717 *vignettes/CARBayesST.Rnw
 f9d1a4a513701b871eefda076ae45d9f *vignettes/Chicago.bst
 bb4043d188b18ffe827f968f9d39c159 *vignettes/JSS2728.bib
 aacf08a3b9503d248acb5b34620937f9 *vignettes/SMRmap.png
