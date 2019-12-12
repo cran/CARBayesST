@@ -13,8 +13,8 @@ a <- common.verbose(verbose)
   
   # convert the supplied adjacency matrix into a spam matrix, if required.
   if(!is.symmetric.matrix(W)) stop("W is not symmetric.", call.=FALSE)
-  if(class(W) == "matrix") W <- as.spam(W)
-  if(!class(W) %in% c("matrix", "spam")) stop("W must be an object with class \"matrix\" or \"spam\"", call.=FALSE)  
+  #if(class(W) == "matrix") W <- as.spam(W)
+  #if(!class(W) %in% c("matrix", "spam")) stop("W must be an object with class \"matrix\" or \"spam\"", call.=FALSE)  
 
   
   logit     <- function(p) log(p/(1-p))
@@ -30,7 +30,7 @@ a <- common.verbose(verbose)
   frame <- try(suppressWarnings(model.frame(formula, data = data, na.action=na.pass)), silent=TRUE)
   if(class(frame)=="try-error") stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
   X <- try(suppressWarnings(model.matrix(object=attr(frame, "terms"), data=frame)), silent=TRUE)
-  if(class(X)=="try-error") stop("the covariate matrix contains inappropriate values.", call.=FALSE)
+  #if(class(X)=="try-error") stop("the covariate matrix contains inappropriate values.", call.=FALSE)
   if(sum(is.na(X))>0) stop("the covariate matrix contains missing 'NA' values.", call.=FALSE)
   
   # get summaries of the model matrix
@@ -52,7 +52,7 @@ a <- common.verbose(verbose)
   
   # identify and error check the offset term, if it exists.
   offset <- try(model.offset(frame), silent=TRUE)
-  if(class(offset)=="try-error")   stop("the offset is not numeric.", call.=FALSE)
+  #if(class(offset)=="try-error")   stop("the offset is not numeric.", call.=FALSE)
   if(is.null(offset))              offset <- rep(0,(n.time * n.sites))
   if(sum(is.na(offset))>0)         stop("the offset has missing 'NA' values.", call.=FALSE)
   if(!is.numeric(offset))          stop("the offset variable has non-numeric values.", call.=FALSE) 
