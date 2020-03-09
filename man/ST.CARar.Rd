@@ -26,7 +26,7 @@ Carlo (MCMC) simulation.
 \usage{
 ST.CARar(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample, thin=1, 
 prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.tau2=NULL,
-rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
+rho.S=NULL, rho.T=NULL, MALA=FALSE, verbose=TRUE)
 }
 
 
@@ -98,8 +98,8 @@ estimated in the model.
 }
 \item{MALA}{
 Logical, should the function use Metropolis adjusted Langevin algorithm (MALA)
-updates (TRUE, default) or simple random walk (FALSE) updates for the random 
-effects. Not applicable if family="gaussian".   
+updates (TRUE) or simple random walk (FALSE, default) updates for the random 
+effects and the regression parameters. Not applicable if family="gaussian".    
 }
 \item{verbose}{
 Logical, should the function update the user on its progress.  
@@ -121,7 +121,8 @@ Marginal Predictive Likelihood (LMPL), the Watanabe-Akaike Information Criterion
 the loglikelihood.}
 \item{accept }{The acceptance probabilities for the parameters.}
 \item{localised.structure }{NULL, for compatability with the other models.}
-\item{formula }{The formula for the covariate and offset parts of the model.}
+\item{formula }{The formula (as a text string) for the response, covariate and 
+offset parts of the model.}
 \item{model }{A text string describing the model fit.}
 \item{X }{The design matrix of covariates.}
 }

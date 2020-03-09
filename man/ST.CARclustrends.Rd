@@ -140,7 +140,8 @@ which is a vector the same length and in the same order as the number of areas.
 The kth element specifies which trend area k has been allocated to based on the 
 posterior mode. The second element is "trend.probs", which is a matrix containing 
 the probabilities associated with each trend for each areal unit.}
-\item{formula }{The formula for the covariate and offset parts of the model.}
+\item{formula }{The formula (as a text string) for the response, covariate and 
+offset parts of the model.}
 \item{model }{A text string describing the model fit.}
 \item{X }{The design matrix of covariates.}
 }
@@ -156,9 +157,9 @@ areas: A new mixed model for spatial dependence, Chapter Statistical Models in
 Epidemiology, the Environment and Clinical Trials, Halloran, M and Berry, D (eds),
 pp. 135-178. Springer-Verlag, New York.
 
-Napier, G., Lee, D., Robertson, C., and Lawson, A. (2018). A Bayesian space-time 
+Napier, G., Lee, D., Robertson, C., and Lawson, A. (2019). A Bayesian space-time 
 model for clustering areal units based on their disease trends, Biostatistics,
-to appear, 10.1093/biostatistics/kxy024.
+20, 681-697.
 }
         
 \author{

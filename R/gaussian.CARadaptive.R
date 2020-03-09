@@ -331,7 +331,9 @@ gaussian.CARadaptive <- function(formula, data = NULL, W, burnin, n.sample, thin
     chol.Q.space.prop      <- update(chol.Q.space, x = Q.space.prop) 
     detSpace               <- 2*determinant(chol.Q.space.prop, logarithm = T)$modulus
     Q.space.det.prop       <- n.sites*detTime + n.time*detSpace
-    acceptance             <- exp(0.5*(Q.space.det.prop - Q.space.det.old) + (1/(2*tau))*(phiQphi_phiQphiNew))
+    hastings <- log(dtruncnorm(x=rho, a=0, b=1, mean=proposal.rho, sd=rho.tune)) - log(dtruncnorm(x=proposal.rho, a=0, b=1, mean=rho, sd=rho.tune)) 
+    acceptance             <- exp(0.5*(Q.space.det.prop - Q.space.det.old) + (1/(2*tau))*(phiQphi_phiQphiNew) + hastings)
+    
     accept[6]              <- accept[6] + 1
     if(runif(1)  <= acceptance){
       accept[5]        <- accept[5] + 1

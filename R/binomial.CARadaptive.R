@@ -1,4 +1,4 @@
-binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, rho = NULL, epsilon = 0, MALA=TRUE, verbose = TRUE)
+binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, rho = NULL, epsilon = 0, MALA=FALSE, verbose = TRUE)
     { 
 #### Verbose
     a <- common.verbose(verbose)  
@@ -306,12 +306,12 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     
     # update BETA
     offset.temp   <- offset + as.numeric(phi)     
-    if(p>2)
+    if(MALA)
     {
         temp <- binomialbetaupdateMALA(X.standardised, k, p, beta_par, offset.temp, y, failures, trials, prior.mean.beta, prior.var.beta, n.beta.block, proposal.sd.beta, list.block)
     }else
     {
-        temp <- binomialbetaupdateRW(X.standardised, k, p, beta_par, offset.temp, y, failures, prior.mean.beta, prior.var.beta, proposal.sd.beta)
+        temp <- binomialbetaupdateRW(X.standardised, k, p, beta_par, offset.temp, y, failures, prior.mean.beta, prior.var.beta, n.beta.block, proposal.sd.beta, list.block)
     }
     beta_par <- temp[[1]]
     accept[1] <- accept[1] + temp[[2]]
@@ -363,7 +363,9 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     chol.Q.space.prop      <- update(chol.Q.space, x = Q.space.prop) 
     detSpace               <- 2*determinant(chol.Q.space.prop, logarithm = T)$modulus
     Q.space.det.prop       <- n.sites*detTime + n.time*detSpace
-    acceptance             <- exp(0.5*(Q.space.det.prop - Q.space.det.old) + (1/(2*tau))*(phiQphi_phiQphiNew))
+    hastings <- log(dtruncnorm(x=rho, a=0, b=1, mean=proposal.rho, sd=rho.tune)) - log(dtruncnorm(x=proposal.rho, a=0, b=1, mean=rho, sd=rho.tune)) 
+    acceptance             <- exp(0.5*(Q.space.det.prop - Q.space.det.old) + (1/(2*tau))*(phiQphi_phiQphiNew) + hastings)
+    
     accept[6]              <- accept[6] + 1
     if(runif(1)  <= acceptance){
       accept[5]        <- accept[5] + 1
