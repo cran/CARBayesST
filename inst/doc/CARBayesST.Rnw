@@ -39,17 +39,17 @@
 %% almost as usual
 \author{Duncan Lee, Alastair Rushworth and Gary Napier
 \\University of Glasgow}
-\title{\pkg{CARBayesST} version 3.1: Spatio-Temporal Areal Unit Modelling in \proglang{R} with Conditional Autoregressive Priors}
+\title{\pkg{CARBayesST} version 3.1.1: Spatio-Temporal Areal Unit Modelling in \proglang{R} with Conditional Autoregressive Priors}
 
 %% for pretty printing and a nice hypersummary also set:
 \Plainauthor{Duncan Lee, Alastair Rushworth, Gary Napier} %% comma-separated
-\Plaintitle{CARBayesST version 3.1: Spatio-Temporal Areal Unit Modelling in R with Conditional Autoregressive Priors} %% without formatting
+\Plaintitle{CARBayesST version 3.1.1: Spatio-Temporal Areal Unit Modelling in R with Conditional Autoregressive Priors} %% without formatting
 \Shorttitle{\pkg{CARBayesST}: Spatio-Temporal Areal Unit Modelling} %% a short 
 
 
 %% an abstract and keywords
 \Abstract{
-This is a vignette for the \proglang{R} package \pkg{CARBayesST} version 3.1, and is an updated version of a paper in the Journal of Statistical Software in 2018 Volume 84 Issue 9 by the same authors. The package has been developed to model spatio-temporal data relating to a set of non-overlapping areal units that are observed over multiple time periods. These data typically contain spatio-temporal autocorrelation, and this package provides a suite of models for capturing this autocorrelation via random effects that are assigned spatio-temporal extensions of conditional autoregressive (CAR) priors within a hierarchical Bayesian model. \pkg{CARBayesST} is the first dedicated \proglang{R} package for modelling these data in a Bayesian setting using Markov chain Monte carlo (MCMC) simulation. The software can fit a range of models that estimate different aspects of the data, including the estimation of average spatial and temporal trends, and the identification of clusters of areal units that exhibit elevated values. This vignette outlines the class of models that the software can implement, before applying them to exemplar case studies.
+This is a vignette for the \proglang{R} package \pkg{CARBayesST} version 3.1.1, and is an updated version of a paper in the Journal of Statistical Software in 2018 Volume 84 Issue 9 by the same authors. The package has been developed to model spatio-temporal data relating to a set of non-overlapping areal units that are observed over multiple time periods. These data typically contain spatio-temporal autocorrelation, and this package provides a suite of models for capturing this autocorrelation via random effects that are assigned spatio-temporal extensions of conditional autoregressive (CAR) priors within a hierarchical Bayesian model. \pkg{CARBayesST} is the first dedicated \proglang{R} package for modelling these data in a Bayesian setting using Markov chain Monte carlo (MCMC) simulation. The software can fit a range of models that estimate different aspects of the data, including the estimation of average spatial and temporal trends, and the identification of clusters of areal units that exhibit elevated values. This vignette outlines the class of models that the software can implement, before applying them to exemplar case studies.
 
 }
 \Keywords{Bayesian inference, conditional autoregressive priors, spatio-temporal areal unit modelling}
