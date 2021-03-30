@@ -1,12 +1,14 @@
 useDynLib(CARBayesST, .registration = TRUE)
 export(
+     MVST.CARar,
      ST.CARlinear,
      ST.CARar,
      ST.CARanova,
      ST.CARadaptive,
      ST.CARclustrends,
      ST.CARlocalised,
-     ST.CARsepspatial
+     ST.CARsepspatial,
+     W.estimate
 )
 
 S3method(print, CARBayesST)
@@ -17,7 +19,6 @@ S3method(residuals, CARBayesST)
 S3method(logLik, CARBayesST)
 import(spam)
 import(MASS)
-import(testthat)
 importFrom(truncnorm, rtruncnorm, dtruncnorm)
 import(Rcpp)
 importFrom(truncdist, rtrunc)
@@ -31,11 +32,12 @@ importFrom(matrixStats, rowMaxs)
 importFrom(coda, mcmc, geweke.diag, effectiveSize, HPDinterval, mcmc.list, gelman.diag)
 importFrom(utils, setTxtProgressBar, txtProgressBar)
 importFrom(spdep, mat2listw, moran.mc, n.comp.nb, nb2listw, nb2mat, poly2nb)
-importFrom(matrixcalc, is.symmetric.matrix)
+importFrom(matrixcalc, is.symmetric.matrix, is.positive.definite)
 importFrom(sp, spplot)
 importFrom(dplyr, summarise, mutate, group_by)
 importFrom(GGally, ggpairs)
 importFrom(gridExtra, grid.arrange)
+importFrom(MCMCpack, riwish)
 
 
 

@@ -8,30 +8,31 @@ Spatio-Temporal Generalised Linear Mixed Models For Areal Unit Data
 }
 
 \description{
-Implements a class of spatio-temporal generalised linear mixed models for areal 
-unit data, with inference in a Bayesian setting using Markov chain Monte Carlo 
-(MCMC) simulation. The response variable can be binomial, Gaussian or Poisson,
-but for some models only the binomial and Poisson data likelihoods are available. 
-The spatio-temporal autocorrelation is modelled by random effects,  which are 
-assigned conditional autoregressive (CAR) style prior distributions. A number of 
-different random effects structures are available, and full details are given in 
-the vignette accompanying this package and the references below. The creation of 
-this package was supported by the Engineering and Physical Sciences Research Council 
-(EPSRC) grant EP/J017442/1 and the Medical Research Council (MRC) grant MR/L022184/1.
+Implements a class of univariate and multivariate spatio-temporal generalised 
+linear mixed models for areal unit data, with inference in a Bayesian setting 
+using Markov chain Monte Carlo (MCMC) simulation. The response variable can be 
+binomial, Gaussian or Poisson, but for some models only the binomial and Poisson 
+data likelihoods are available. The spatio-temporal autocorrelation is modelled 
+by random effects,  which are assigned conditional autoregressive (CAR) style 
+prior distributions. A number of different random effects structures are available, 
+and full details are given in the vignette accompanying this package and the 
+references below. The creation and development of this package was supported by the 
+Engineering and Physical Sciences Research Council  (EPSRC) grants EP/J017442/1 and
+EP/T004878/1 and the Medical Research Council (MRC) grant MR/L022184/1.
 }
 
 \details{
 \tabular{ll}{
 Package: \tab CARBayesST\cr
 Type: \tab Package\cr
-Version: \tab 3.1.1\cr
-Date: \tab 2021-04-02\cr
+Version: \tab 3.2\cr
+Date: \tab 2021-03-30\cr
 License: \tab GPL (>= 2)\cr
 }
 }
 
 \author{
-Author: Duncan Lee, Alastair Rushworth and Gary Napier
+Author: Duncan Lee, Alastair Rushworth, Gary Napier and William Pettersson 
 
 Maintainer: Duncan Lee <Duncan.Lee@glasgow.ac.uk>
 }
@@ -50,6 +51,9 @@ maternal smoking rates in Glasgow, Annals of Applied Statistics, 10, 1427-1446.
 Lee, D and Rushworth, A and Napier, G (2018). Spatio-Temporal Areal Unit Modeling in 
 R with Conditional Autoregressive Priors Using the CARBayesST Package, 
 Journal of Statistical Software, 84, 9, 1-39.
+
+Lee, D and Meeks, K (2020). Improved inference for areal unit count data using graph-based 
+optimisation. arXiv:2010.10893.
 
 Napier, G, D. Lee, C. Robertson, A. Lawson, and K. Pollock (2016). A model to estimate the 
 impact of changes in MMR vaccination uptake on inequalities in measles susceptibility in 

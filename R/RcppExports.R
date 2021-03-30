@@ -9,44 +9,28 @@ quadform <- function(Wtriplet, Wtripletsum, n_triplet, nsites, phi, theta, rho) 
     .Call(`_CARBayesST_quadform`, Wtriplet, Wtripletsum, n_triplet, nsites, phi, theta, rho)
 }
 
+gammaquadformcompute <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho) {
+    .Call(`_CARBayesST_gammaquadformcompute`, Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho)
+}
+
+alphaquadformcompute <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, tau2) {
+    .Call(`_CARBayesST_alphaquadformcompute`, Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, tau2)
+}
+
+tauquadformcompute <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, gamma) {
+    .Call(`_CARBayesST_tauquadformcompute`, Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, gamma)
+}
+
+tauquadformcomputear2 <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, alpha1, alpha2) {
+    .Call(`_CARBayesST_tauquadformcomputear2`, Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, alpha1, alpha2)
+}
+
 poissonbetaupdateMALA <- function(X, nsites, p, beta, offset, y, prior_meanbeta, prior_varbeta, nblock, beta_tune, block_list) {
     .Call(`_CARBayesST_poissonbetaupdateMALA`, X, nsites, p, beta, offset, y, prior_meanbeta, prior_varbeta, nblock, beta_tune, block_list)
 }
 
 poissonbetaupdateRW <- function(X, nsites, p, beta, offset, y, prior_meanbeta, prior_varbeta, nblock, beta_tune, block_list) {
     .Call(`_CARBayesST_poissonbetaupdateRW`, X, nsites, p, beta, offset, y, prior_meanbeta, prior_varbeta, nblock, beta_tune, block_list)
-}
-
-poissoncarupdateMALA <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset) {
-    .Call(`_CARBayesST_poissoncarupdateMALA`, Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset)
-}
-
-poissoncarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset) {
-    .Call(`_CARBayesST_poissoncarupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset)
-}
-
-poissonindepupdateMALA <- function(nsites, theta, sigma2, y, theta_tune, offset) {
-    .Call(`_CARBayesST_poissonindepupdateMALA`, nsites, theta, sigma2, y, theta_tune, offset)
-}
-
-poissonindepupdateRW <- function(nsites, theta, tau2, y, theta_tune, offset) {
-    .Call(`_CARBayesST_poissonindepupdateRW`, nsites, theta, tau2, y, theta_tune, offset)
-}
-
-zipcarupdateMALA <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset, missind) {
-    .Call(`_CARBayesST_zipcarupdateMALA`, Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset, missind)
-}
-
-zipcarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset, missind) {
-    .Call(`_CARBayesST_zipcarupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset, missind)
-}
-
-zipindepupdateMALA <- function(nsites, theta, sigma2, y, theta_tune, offset, missind) {
-    .Call(`_CARBayesST_zipindepupdateMALA`, nsites, theta, sigma2, y, theta_tune, offset, missind)
-}
-
-zipindepupdateRW <- function(nsites, theta, tau2, y, theta_tune, offset, missind) {
-    .Call(`_CARBayesST_zipindepupdateRW`, nsites, theta, tau2, y, theta_tune, offset, missind)
 }
 
 binomialbetaupdateMALA <- function(X, nsites, p, beta, offset, y, failures, trials, prior_meanbeta, prior_varbeta, nblock, beta_tune, block_list) {
@@ -57,16 +41,16 @@ binomialbetaupdateRW <- function(X, nsites, p, beta, offset, y, failures, prior_
     .Call(`_CARBayesST_binomialbetaupdateRW`, X, nsites, p, beta, offset, y, failures, prior_meanbeta, prior_varbeta, nblock, beta_tune, block_list)
 }
 
-binomialindepupdateMALA <- function(nsites, theta, sigma2, y, failures, trials, theta_tune, offset) {
-    .Call(`_CARBayesST_binomialindepupdateMALA`, nsites, theta, sigma2, y, failures, trials, theta_tune, offset)
+poissoncarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset) {
+    .Call(`_CARBayesST_poissoncarupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, phi_tune, rho, offset, ntime, mult_offset)
+}
+
+poissonindepupdateRW <- function(nsites, theta, tau2, y, theta_tune, offset) {
+    .Call(`_CARBayesST_poissonindepupdateRW`, nsites, theta, tau2, y, theta_tune, offset)
 }
 
 binomialindepupdateRW <- function(nsites, theta, tau2, y, failures, theta_tune, offset) {
     .Call(`_CARBayesST_binomialindepupdateRW`, nsites, theta, tau2, y, failures, theta_tune, offset)
-}
-
-binomialcarupdateMALA <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, failures, trials, phi_tune, rho, offset, ntime, mult_offset) {
-    .Call(`_CARBayesST_binomialcarupdateMALA`, Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, failures, trials, phi_tune, rho, offset, ntime, mult_offset)
 }
 
 binomialcarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, y, failures, phi_tune, rho, offset, ntime, mult_offset) {
@@ -77,40 +61,72 @@ gaussiancarupdate <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2,
     .Call(`_CARBayesST_gaussiancarupdate`, Wtriplet, Wbegfin, Wtripletsum, nsites, phi, tau2, nu2, offset, rho, ntime)
 }
 
-poissonarcarupdateMALA <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset) {
-    .Call(`_CARBayesST_poissonarcarupdateMALA`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset)
+poissonar1carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset) {
+    .Call(`_CARBayesST_poissonar1carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset)
 }
 
-poissonarcarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset) {
-    .Call(`_CARBayesST_poissonarcarupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset)
+poissonar2carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, alpha1, alpha2, rho, ymat, phi_tune, offset, denoffset) {
+    .Call(`_CARBayesST_poissonar2carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, alpha1, alpha2, rho, ymat, phi_tune, offset, denoffset)
 }
 
-ziparcarupdateMALA <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset, missind) {
-    .Call(`_CARBayesST_ziparcarupdateMALA`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset, missind)
+binomialar1carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, failuresmat, phi_tune, offset, denoffset) {
+    .Call(`_CARBayesST_binomialar1carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, failuresmat, phi_tune, offset, denoffset)
 }
 
-ziparcarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset, missind) {
-    .Call(`_CARBayesST_ziparcarupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, phi_tune, offset, denoffset, missind)
+binomialar2carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, alpha1, alpha2, rho, ymat, failuresmat, phi_tune, offset, denoffset) {
+    .Call(`_CARBayesST_binomialar2carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, alpha1, alpha2, rho, ymat, failuresmat, phi_tune, offset, denoffset)
 }
 
-gammaquadformcompute <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho) {
-    .Call(`_CARBayesST_gammaquadformcompute`, Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho)
+gaussianar1carupdate <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, nu2, gamma, rho, offset, denoffset) {
+    .Call(`_CARBayesST_gaussianar1carupdate`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, nu2, gamma, rho, offset, denoffset)
 }
 
-tauquadformcompute <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, gamma) {
-    .Call(`_CARBayesST_tauquadformcompute`, Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, gamma)
+gaussianar2carupdate <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, nu2, alpha1, alpha2, rho, offset, denoffset) {
+    .Call(`_CARBayesST_gaussianar2carupdate`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, nu2, alpha1, alpha2, rho, offset, denoffset)
 }
 
-binomialarcarupdateMALA <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, failuresmat, trialsmat, phi_tune, offset, denoffset) {
-    .Call(`_CARBayesST_binomialarcarupdateMALA`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, failuresmat, trialsmat, phi_tune, offset, denoffset)
+binomialmvar1carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha, rho, Sigmainv, ymat, failuresmat, innovations, offset, denoffset) {
+    .Call(`_CARBayesST_binomialmvar1carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha, rho, Sigmainv, ymat, failuresmat, innovations, offset, denoffset)
 }
 
-binomialarcarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, failuresmat, phi_tune, offset, denoffset) {
-    .Call(`_CARBayesST_binomialarcarupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, gamma, rho, ymat, failuresmat, phi_tune, offset, denoffset)
+binomialmvar2carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha1, alpha2, rho, Sigmainv, ymat, failuresmat, innovations, offset, denoffset) {
+    .Call(`_CARBayesST_binomialmvar2carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha1, alpha2, rho, Sigmainv, ymat, failuresmat, innovations, offset, denoffset)
 }
 
-gaussianarcarupdate <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, nu2, gamma, rho, offset, denoffset) {
-    .Call(`_CARBayesST_gaussianarcarupdate`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, tau2, nu2, gamma, rho, offset, denoffset)
+poissonmvar1carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha, rho, Sigmainv, ymat, innovations, offset, denoffset) {
+    .Call(`_CARBayesST_poissonmvar1carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha, rho, Sigmainv, ymat, innovations, offset, denoffset)
+}
+
+poissonmvar2carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha1, alpha2, rho, Sigmainv, ymat, innovations, offset, denoffset) {
+    .Call(`_CARBayesST_poissonmvar2carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha1, alpha2, rho, Sigmainv, ymat, innovations, offset, denoffset)
+}
+
+gaussianmvar1carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha, rho, Sigmainv, nu2, innovations, offset, denoffset) {
+    .Call(`_CARBayesST_gaussianmvar1carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha, rho, Sigmainv, nu2, innovations, offset, denoffset)
+}
+
+gaussianmvar2carupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha1, alpha2, rho, Sigmainv, nu2, innovations, offset, denoffset) {
+    .Call(`_CARBayesST_gaussianmvar2carupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsite, ntime, nvar, phi, alpha1, alpha2, rho, Sigmainv, nu2, innovations, offset, denoffset)
+}
+
+MVSTquadformcompute <- function(Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, nvar, phit, phij, rho, Sigmainv) {
+    .Call(`_CARBayesST_MVSTquadformcompute`, Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, nvar, phit, phij, rho, Sigmainv)
+}
+
+MVSTrhoTAR1compute <- function(Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, ntime, nvar, phi, rho, Sigmainv) {
+    .Call(`_CARBayesST_MVSTrhoTAR1compute`, Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, ntime, nvar, phi, rho, Sigmainv)
+}
+
+MVSTrhoTAR2compute <- function(Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, ntime, nvar, phi, rho, Sigmainv) {
+    .Call(`_CARBayesST_MVSTrhoTAR2compute`, Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, ntime, nvar, phi, rho, Sigmainv)
+}
+
+MVSTrhoSAR1compute <- function(Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, ntime, nvar, phi, rho, alpha, Sigmainv) {
+    .Call(`_CARBayesST_MVSTrhoSAR1compute`, Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, ntime, nvar, phi, rho, alpha, Sigmainv)
+}
+
+MVSTrhoSAR2compute <- function(Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, ntime, nvar, phi, rho, alpha1, alpha2, Sigmainv) {
+    .Call(`_CARBayesST_MVSTrhoSAR2compute`, Wtriplet, Wtripletsum, n_triplet, den_offset, nsite, ntime, nvar, phi, rho, alpha1, alpha2, Sigmainv)
 }
 
 qform <- function(Qtrip, phi) {
@@ -153,6 +169,14 @@ updatetripList2 <- function(trips, vold, vnew, nedges, nsites, block, block_leng
     .Call(`_CARBayesST_updatetripList2`, trips, vold, vnew, nedges, nsites, block, block_length, rho, fixedridge)
 }
 
+SPTICARphiBinomial <- function(W, nsites, ntimes, phi, nneighbours, tau, y, alpha, XB, phiVarb_tune, trials) {
+    .Call(`_CARBayesST_SPTICARphiBinomial`, W, nsites, ntimes, phi, nneighbours, tau, y, alpha, XB, phiVarb_tune, trials)
+}
+
+SPTICARphiVarb <- function(W, nsites, ntimes, phiVarb, nneighbours, tau, y, E, phiVarb_tune, alpha, XB) {
+    .Call(`_CARBayesST_SPTICARphiVarb`, W, nsites, ntimes, phiVarb, nneighbours, tau, y, E, phiVarb_tune, alpha, XB)
+}
+
 Zupdatesqbin <- function(Z, Offset, Y, delta, lambda, nsites, ntime, G, SS, prioroffset, Gstar, failures) {
     .Call(`_CARBayesST_Zupdatesqbin`, Z, Offset, Y, delta, lambda, nsites, ntime, G, SS, prioroffset, Gstar, failures)
 }
@@ -173,16 +197,8 @@ rhoquadformcompute <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, 
     .Call(`_CARBayesST_rhoquadformcompute`, Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho, tau2)
 }
 
-binomialsrecarupdateMALA <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, y, failures, trials, phi_tune, offset, denoffset, tau2) {
-    .Call(`_CARBayesST_binomialsrecarupdateMALA`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, y, failures, trials, phi_tune, offset, denoffset, tau2)
-}
-
 binomialsrecarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, failuresmat, phi_tune, offset, denoffset, tau2) {
     .Call(`_CARBayesST_binomialsrecarupdateRW`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, failuresmat, phi_tune, offset, denoffset, tau2)
-}
-
-poissonsrecarupdateMALA <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, phi_tune, offset, denoffset, tau2) {
-    .Call(`_CARBayesST_poissonsrecarupdateMALA`, Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, phi_tune, offset, denoffset, tau2)
 }
 
 poissonsrecarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime, phi, rho, ymat, phi_tune, offset, denoffset, tau2) {
@@ -191,22 +207,6 @@ poissonsrecarupdateRW <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntime,
 
 tauquadformcompute2 <- function(Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho) {
     .Call(`_CARBayesST_tauquadformcompute2`, Wtriplet, Wtripletsum, n_triplet, nsites, ntime, phi, rho)
-}
-
-SPTICARphiVarbMALA <- function(W, nsites, ntimes, phiVarb, nneighbours, tau, y, E, phiVarb_tune, alpha, XB) {
-    .Call(`_CARBayesST_SPTICARphiVarbMALA`, W, nsites, ntimes, phiVarb, nneighbours, tau, y, E, phiVarb_tune, alpha, XB)
-}
-
-SPTICARphiBinomialMALA <- function(W, nsites, ntimes, phi, nneighbours, tau, y, alpha, XB, phiVarb_tune, trials) {
-    .Call(`_CARBayesST_SPTICARphiBinomialMALA`, W, nsites, ntimes, phi, nneighbours, tau, y, alpha, XB, phiVarb_tune, trials)
-}
-
-SPTICARphiBinomial <- function(W, nsites, ntimes, phi, nneighbours, tau, y, alpha, XB, phiVarb_tune, trials) {
-    .Call(`_CARBayesST_SPTICARphiBinomial`, W, nsites, ntimes, phi, nneighbours, tau, y, alpha, XB, phiVarb_tune, trials)
-}
-
-SPTICARphiVarb <- function(W, nsites, ntimes, phiVarb, nneighbours, tau, y, E, phiVarb_tune, alpha, XB) {
-    .Call(`_CARBayesST_SPTICARphiVarb`, W, nsites, ntimes, phiVarb, nneighbours, tau, y, E, phiVarb_tune, alpha, XB)
 }
 
 tempupdate <- function(Nchains, dt) {
@@ -299,5 +299,9 @@ binomialphiupdate <- function(Wtriplet, Wbegfin, Wtripletsum, nsites, ntimes, ph
 
 binomialcouplingAllupdate <- function(nsites, K, p, w, offset, beta, gamma, lambda, phi, rho, tau2, Wtripletsum, Wtriplet, Wbegfin, y, failures, prior_meanbeta, prior_varbeta, prior_meantrends, prior_vartrends, prior_lambda, prior_tau2, swap, temps, begin, Ntrends, TrendSel) {
     .Call(`_CARBayesST_binomialcouplingAllupdate`, nsites, K, p, w, offset, beta, gamma, lambda, phi, rho, tau2, Wtripletsum, Wtriplet, Wbegfin, y, failures, prior_meanbeta, prior_varbeta, prior_meantrends, prior_vartrends, prior_lambda, prior_tau2, swap, temps, begin, Ntrends, TrendSel)
+}
+
+optimise_graph <- function(adj, data, add = FALSE, remove = TRUE, remove_first = FALSE) {
+    .Call(`_CARBayesST_optimise_graph`, adj, data, add, remove, remove_first)
 }
 
