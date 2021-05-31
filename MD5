@@ -1,5 +1,5 @@
-903e075f79bd3a88271aec76d0b0c51e *DESCRIPTION
-158aad47bb29a831d1d35a7bb0956aba *NAMESPACE
+8603a7b169279de9371a73f8df4edbfb *DESCRIPTION
+882d79bff3ee1f4bbee8f98ed9d69657 *NAMESPACE
 37d87c364aaeae856b980766e415393e *R/MVST.CARar.R
 7a89925c0950e2e9d8a07e2cff9cb2b0 *R/RcppExports.R
 acee8e08326f65fe18c71ed762c4f7b4 *R/ST.CARadaptive.R
@@ -10,7 +10,7 @@ a928862090493118c6f612e4fae0accd *R/ST.CARlinear.R
 ccd352d00cbf673d0f7cdf5b155927c5 *R/ST.CARlocalised.R
 3aa2c3fb3fee86cc7451af143d13066a *R/ST.CARsepspatial.R
 38a24c06b4c6a1b90a2cb786748251a0 *R/W.estimate.R
-4a4edf51795f7e6f20e96ae6d49825e4 *R/binomial.CARadaptive.R
+0f2b6bc0f7a15054d6898da71b162d23 *R/binomial.CARadaptive.R
 b558006e03064a11786774cb83f828dd *R/binomial.CARanova.R
 d7ea609d7928d2193f81ff7ebbffc810 *R/binomial.CARar1.R
 3db40dea895d352fa5b1145622324cae *R/binomial.CARar2.R
@@ -21,9 +21,9 @@ a822633b383a02e5ffa3ef0d93831beb *R/binomial.CARsepspatial.R
 54adaa4b32d19aee16184cfe81f8ce39 *R/binomial.MVCARar1.R
 a08d18bd6c777c2ef107f6f3911b6fd1 *R/binomial.MVCARar2.R
 bebe876e1686fdb4f08fded23b37e3ef *R/coef.CARBayesST.R
-d15866ea13afce742841d0a8aa1fa8e0 *R/common.functions.R
+1ff8c05319c3ed8df5345af9ed645bbc *R/common.functions.R
 c3523f332e09e71abf2f9cab4fa211b6 *R/fitted.CARBayesST.R
-d367c26880ef318b36b8511825df76cd *R/gaussian.CARadaptive.R
+00a5a1e485df93db5b53ab8a6b239308 *R/gaussian.CARadaptive.R
 bfc7887a43ed70b3337a89ae7e18c127 *R/gaussian.CARanova.R
 c75a1810468a4030513eb3f3c5a4000b *R/gaussian.CARar1.R
 fac5587e53eafe5786bc96fc2be916f8 *R/gaussian.CARar2.R
@@ -32,7 +32,7 @@ fac5587e53eafe5786bc96fc2be916f8 *R/gaussian.CARar2.R
 5730c5e79e22339b603e28727a3d95cf *R/gaussian.MVCARar2.R
 a854094460aab477815977164603d5e6 *R/logLik.CARBayesST.R
 d2a2ba0f0aaa0fd2ed64109d336187c7 *R/model.matrix.CARBayesST.R
-0f5cfaef04e4dbbeda5ba2704ad46377 *R/poisson.CARadaptive.R
+f972e21e31b61f99e6c944c574b0813a *R/poisson.CARadaptive.R
 a7f3d49594fd9ab19dc3ddd635e60cae *R/poisson.CARanova.R
 e64d26e2cea08248363568d5943ed2cf *R/poisson.CARar1.R
 c27f83030ad0ac4fb3c7797f2b0ab1a0 *R/poisson.CARar2.R
@@ -44,12 +44,12 @@ ef85afa571612f7a317401da21c2b089 *R/poisson.CARlinear.R
 448f9f7d48878bd670fd3ef6aa21cfab *R/poisson.MVCARar2.R
 27f58e0ac0c915e2c7f912dddf9d520c *R/print.CARBayesST.R
 d9ae226961de601526fd6c21fbbf2ad8 *R/residuals.CARBayesST.R
-c295822e4d7f2c6074ed19d09739218f *build/vignette.rds
+5ae56eab5b186e5619976f0a6b254084 *build/vignette.rds
 56eb3cde6b235fc48b7b6c063d3bce31 *inst/CITATION
 826448aafd5075c9c3477294a16a0379 *inst/doc/CARBayesST.R
 c012ee24db59b076b2102e714278e7f7 *inst/doc/CARBayesST.Rnw
-cf55b625c0ef91123ef726276772934f *inst/doc/CARBayesST.pdf
-1ed4ae2d94551fc650fbb13ff1f7ad76 *man/CARBayesST-package.Rd
+6eb6193d0f9175c93912105bf557d260 *inst/doc/CARBayesST.pdf
+1a61dbea15d37103413f5000762f60cd *man/CARBayesST-package.Rd
 0aaf6d00f91301088b5469e98e5350e2 *man/MVST.CARar.Rd
 1572f1c46714919dddc54999a0f465c5 *man/ST.CARadaptive.Rd
 649afee8ac87d3efdda55f0699efff1c *man/ST.CARanova.Rd
