@@ -187,8 +187,6 @@ proposal.sd.phi <- 0.1
 proposal.sd.delta <- 0.1
 proposal.sd.rho <- 0.02
 proposal.sd.lambda <- 0.02
-proposal.corr.beta <- solve(t(X.standardised) %*% X.standardised)
-chol.proposal.corr.beta <- chol(proposal.corr.beta)   
 tau2.phi.shape <- prior.tau2[1] + K/2
 tau2.delta.shape <- prior.tau2[1] + N/2
     

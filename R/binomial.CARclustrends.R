@@ -241,10 +241,10 @@ binomial.CARclustrends <- function(formula, data=NULL, trials, W, burnin, n.samp
   {
     if(i == 2 | i == 5 | i == 6 | (i %in% 8:(8 + knots)))
     {
-      gamma[gamma.pos[i], ] <- rtrunc(Nchains, spec = "norm", b = 0, mean = 0, sd = 0.1)
+    gamma[gamma.pos[i], ] <- rtruncnorm(n=Nchains, b = 0, mean = 0, sd = 0.1)
     }else if (i == 3 | i == 4 | i == 7 | (i %in% (8 + knots + 1):(8 + knots + 1 + knots)))
     {
-      gamma[gamma.pos[i], ] <- rtrunc(Nchains, spec = "norm", a = 0, mean = 0, sd = 0.1)
+    gamma[gamma.pos[i], ] <- rtruncnorm(n=Nchains, a = 0, mean = 0, sd = 0.1)
     }
   }
   gamma.mat <- array(0, c(N.all, Trends.sel, Nchains))
@@ -591,7 +591,7 @@ binomial.CARclustrends <- function(formula, data=NULL, trials, W, burnin, n.samp
     # Samples from rho
     #------------------------------------------------------------------------------------------------------------------------------------------------------
     rho.temp1 <- rhoquadformcomputeNchains(W.triplet, W.triplet.sum, W.n.triplet, K, Nchains, phi, rho, tau2)
-    proposal.rho <- suppressWarnings(rtrunc(n = Nchains, spec = "norm", a = 0, b = 0.99, mean = rho, sd = proposal.sd.rho))
+    proposal.rho <- suppressWarnings(rtruncnorm(n = Nchains, a = 0, b = 0.99, mean = rho, sd = proposal.sd.rho))
     rho.temp2 <- rhoquadformcomputeNchains(W.triplet, W.triplet.sum, W.n.triplet, K, Nchains, phi, proposal.rho, tau2)
     det.Q.W.proposal <- Qdet(Nchains, proposal.rho, Wstar.val)
     logprob.current <- det.Q.W - rho.temp1

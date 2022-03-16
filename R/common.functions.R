@@ -181,13 +181,12 @@ common.frame <- function(formula, data, family)
 {
     #### Overall formula object
     frame <- try(suppressWarnings(model.frame(formula, data=data, na.action=na.pass)), silent=TRUE)
-    if(class(frame)[1]=="try-error") stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
+    if(inherits(frame, "try-error")) stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
     
     
     #### Design matrix
     ## Create the matrix
     X <- try(suppressWarnings(model.matrix(object=attr(frame, "terms"), data=frame)), silent=TRUE)
-    if(class(X)[1]=="try-error") stop("the covariate matrix contains inappropriate values.", call.=FALSE)
     if(sum(is.na(X))>0) stop("the covariate matrix contains missing 'NA' values.", call.=FALSE)
     
     n <- nrow(X)
@@ -229,7 +228,6 @@ common.frame <- function(formula, data, family)
     
     #### Offset variable
     offset <- try(model.offset(frame), silent=TRUE)
-    if(class(offset)[1]=="try-error")   stop("the offset is not numeric.", call.=FALSE)
     if(is.null(offset))  offset <- rep(0,n)
     if(sum(is.na(offset))>0) stop("the offset has missing 'NA' values.", call.=FALSE)
     if(!is.numeric(offset)) stop("the offset variable has non-numeric values.", call.=FALSE)
@@ -273,13 +271,12 @@ common.frame.MVST <- function(formula, data, family)
 {
     #### Overall formula object
     frame <- try(suppressWarnings(model.frame(formula, data=data, na.action=na.pass)), silent=TRUE)
-    if(class(frame)=="try-error") stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
+    if(inherits(frame, "try-error")) stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
     
     
     #### Design matrix
     ## Create the matrix
     X <- try(suppressWarnings(model.matrix(object=attr(frame, "terms"), data=frame)), silent=TRUE)
-    #if(class(X)=="try-error") stop("the covariate matrix contains inappropriate values.", call.=FALSE)
     if(sum(is.na(X))>0) stop("the covariate matrix contains missing 'NA' values.", call.=FALSE)
     
     n <- nrow(X)
@@ -329,8 +326,6 @@ common.frame.MVST <- function(formula, data, family)
     
     #### Offset variable
     offset <- try(model.offset(frame), silent=TRUE)
-    
-    #if(class(offset)=="try-error")   stop("the offset is not numeric.", call.=FALSE)
     if(is.null(offset))  offset <- array(0, c(n, J))
     if(sum(is.na(offset))>0) stop("the offset has missing 'NA' values.", call.=FALSE)
     if(!is.numeric(offset)) stop("the offset variable has non-numeric values.", call.=FALSE)
@@ -369,7 +364,7 @@ common.frame.localised <- function(formula, data, family)
 {
     #### Overall formula object
     frame <- try(suppressWarnings(model.frame(formula, data=data, na.action=na.pass)), silent=TRUE)
-    if(class(frame)[1]=="try-error") stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
+    if(inherits(frame, "try-error")) stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
     
     
     #### Response variable
@@ -398,7 +393,6 @@ common.frame.localised <- function(formula, data, family)
     
     #### Offset variable
     offset <- try(model.offset(frame), silent=TRUE)
-    if(class(offset)[1]=="try-error")   stop("the offset is not numeric.", call.=FALSE)
     if(is.null(offset))  offset <- rep(0,n)
     if(sum(is.na(offset))>0) stop("the offset has missing 'NA' values.", call.=FALSE)
     if(!is.numeric(offset)) stop("the offset variable has non-numeric values.", call.=FALSE)
@@ -406,7 +400,6 @@ common.frame.localised <- function(formula, data, family)
     
     #### Design matrix - Create and then adapt to remove the intercept term
     X <- try(suppressWarnings(model.matrix(object=attr(frame, "terms"), data=frame)), silent=TRUE)
-    if(class(X)[1]=="try-error") stop("the covariate matrix contains inappropriate values.", call.=FALSE)
     if(sum(is.na(X))>0) stop("the covariate matrix contains missing 'NA' values.", call.=FALSE)
     ptemp <- ncol(X)
     

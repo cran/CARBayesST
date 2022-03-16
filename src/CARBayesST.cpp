@@ -5236,20 +5236,24 @@ NumericVector gammaproposal(const int Nchains, NumericVector gamma, NumericVecto
     NumericVector Wareasnew = clone(Wareas);
     double inf = std::numeric_limits<double>::infinity();
     
-    Environment base("package:truncdist");
-    Function rtrunc = base["rtrunc"];
+    //Environment base("package:truncdist");
+    //Function rtrunc = base["rtrunc"];
+    Environment base("package:truncnorm");
+    Function rtruncnorm = base["rtruncnorm"];
     
-    for(int j = 0; j < Nchains; j++)
+        for(int j = 0; j < Nchains; j++)
     {
         if(Wareasnew[j] == 0)
         {
             
             if((trend == 2) | (trend == 5) | (trend == 6) | ((trend >= 8) & (trend <= (8 + knots))))
             {
-                proposal[j] = as<double>( rtrunc(1, "norm", -inf, 0, 0, 0.01) );
+                //proposal[j] = as<double>( rtrunc(1, "norm", -inf, 0, 0, 0.01) );
+                proposal[j] = as<double>( rtruncnorm(1,  -inf, 0, 0, 0.01) );
             }else if((trend == 3) | (trend == 4) | (trend == 7) | ((trend >= (8 + knots + 1)) & (trend <= (8 + knots + 1 + knots))))
             {
-                proposal[j] = as<double>( rtrunc(1, "norm", 0, inf, 0, 0.01) );
+                //proposal[j] = as<double>( rtrunc(1, "norm", 0, inf, 0, 0.01) );
+                proposal[j] = as<double>( rtruncnorm(1,  0, inf, 0, 0.01) );
             }else
             {}
         }
@@ -5257,10 +5261,12 @@ NumericVector gammaproposal(const int Nchains, NumericVector gamma, NumericVecto
         {
             if((trend == 2) | (trend == 5) | (trend == 6) | ((trend >= 8) & (trend <= (8 + knots))))
             {
-                proposal[j] = as<double>( rtrunc(1, "norm", -inf, 0, gammanew[j], gamma_tune[j]) );
+                //proposal[j] = as<double>( rtrunc(1, "norm", -inf, 0, gammanew[j], gamma_tune[j]) );
+                proposal[j] = as<double>( rtruncnorm(1, -inf, 0, gammanew[j], gamma_tune[j]) );
             }else if((trend == 3) | (trend == 4) | (trend == 7) | ((trend >= (8 + knots + 1)) & (trend <= (8 + knots + 1 + knots))))
             {
-                proposal[j] = as<double>( rtrunc(1, "norm", 0, inf, gammanew[j], gamma_tune[j]) );
+                //proposal[j] = as<double>( rtrunc(1, "norm", 0, inf, gammanew[j], gamma_tune[j]) );
+                proposal[j] = as<double>( rtruncnorm(1,  0, inf, gammanew[j], gamma_tune[j]) );
             }else
             {}
         }

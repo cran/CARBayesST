@@ -173,8 +173,8 @@ Gary Napier
 ##################################################
 #### Run the model on simulated data on a lattice
 ##################################################
-#### Load the libraries required
-library(truncdist)
+#### Load libraries
+library(truncnorm)
 library(gtools)
 
 

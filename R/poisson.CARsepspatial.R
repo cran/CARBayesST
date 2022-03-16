@@ -126,8 +126,6 @@ sig2 <- var(delta)/10
   proposal.sd.rho <- 0.05
   proposal.sd.beta <- 0.01
   proposal.sd.delta <- 0.05
-  proposal.corr.beta <- solve(t(X.standardised) %*% X.standardised)
-  chol.proposal.corr.beta <- chol(proposal.corr.beta)
   proposal.sd.lambda <- 0.02
   tau2.shape <- prior.tau2[1] + K/2
   sig2.shape <- prior.tau2[1] + N/2

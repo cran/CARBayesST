@@ -17,7 +17,8 @@ print.CARBayesST <- function(x,...)
         cat("Posterior quantities for selected parameters and DIC\n\n")
         print(x$summary.results[ ,c(1:3,6:7)])
         cat("\nDIC = ", x$modelfit[1], "     ", "p.d = ", x$modelfit[2], "     ", "LMPL = ", x$modelfit[5], "\n")
-    }else if(class(x$localised.structure)=="numeric")
+#    }else if(class(x$localised.structure)=="numeric")
+    }else if(is.numeric(x$localised.structure))
     {
         #### Print out the model fitted
         cat("\n#################\n")
@@ -36,8 +37,9 @@ print.CARBayesST <- function(x,...)
         cat("\nDIC = ", x$modelfit[1], "     ", "p.d = ", x$modelfit[2], "     ", "LMPL = ", x$modelfit[5], "\n")
         cat("\nNumber of clusters with the number of data points in each one\n")
         print(table(paste("group", x$localised.structure, sep="")))
-        }else if(class(x$localised.structure)=="list" & nrow(x$localised.structure[[2]])==ncol(x$localised.structure[[2]]))
-    {
+        #}else if(class(x$localised.structure)=="list" & nrow(x$localised.structure[[2]])==ncol(x$localised.structure[[2]]))
+        }else if(is.list(x$localised.structure) & nrow(x$localised.structure[[2]])==ncol(x$localised.structure[[2]]))
+        {
         #### Print out the model fitted
         cat("\n#################\n")
         cat("#### Model fitted\n")
@@ -60,7 +62,7 @@ print.CARBayesST <- function(x,...)
         tab[1, ] <- c(sum(temp)/2, (length(temp)- sum(temp))/2)
         colnames(tab) <- c("stepchange", "no stepchange")
         print(tab)
-    }else if(class(x$localised.structure)=="list")
+    }else if(is.list(x$localised.structure))
     {
         #### Print out the model fitted
         cat("\n#################\n")

@@ -9,20 +9,13 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   locs           <- z[which(z[,1] < z[,2]), ]
   char.locs      <- paste(locs[,1], ".", locs[,2], sep = "")
   n.edges        <- nrow(locs)
-  
-  # convert the supplied adjacency matrix into a spam matrix, if required.
-  #if(!is.symmetric.matrix(W)) stop("W is not symmetric.", call.=FALSE)
-  #if(class(W) == "matrix") W <- as.spam(W)
-  #if(!class(W) %in% c("matrix", "spam")) stop("W must be an object with class \"matrix\" or \"spam\"", call.=FALSE)  
-
   logit     <- function(p) log(p/(1-p))
   inv_logit <- function(v) 1/(1+exp(-v))
   
   # interpret the formula
   frame <- try(suppressWarnings(model.frame(formula, data = data, na.action=na.pass)), silent=TRUE)
-  if(class(frame)=="try-error") stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
+  if(inherits(frame, "try-error")) stop("the formula inputted contains an error, e.g the variables may be different lengths.", call.=FALSE)
   X <- try(suppressWarnings(model.matrix(object=attr(frame, "terms"), data=frame)), silent=TRUE)
-  #if(class(X)=="try-error") stop("the covariate matrix contains inappropriate values.", call.=FALSE)
   if(sum(is.na(X))>0) stop("the covariate matrix contains missing 'NA' values.", call.=FALSE)
   # get summaries of the model matrix
   p       <- ncol(X)
@@ -41,7 +34,6 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
   
   # identify and error check the offset term, if it exists.
   offset <- try(model.offset(frame), silent=TRUE)
-  #if(class(offset)=="try-error")   stop("the offset is not numeric.", call.=FALSE)
   if(is.null(offset))              offset <- rep(0,(n.time * n.sites))
   if(sum(is.na(offset))>0)         stop("the offset has missing 'NA' values.", call.=FALSE)
   if(!is.numeric(offset))          stop("the offset variable has non-numeric values.", call.=FALSE) 
@@ -262,7 +254,8 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     
     # Gibbs update of tau_v
     tau_scale  <- vqform_current/2 + prior.tau2[2]
-    tau_v      <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_v.shape, scale=(1/tau_scale))
+    #tau_v      <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_v.shape, scale=(1/tau_scale))
+    tau_v      <- 1/rtgamma(n=1, shape=tau_v.shape, scale=tau_scale, min=0.000001, max=Inf)
     v.proposal <- rtruncnorm(n = n.edges, a=-15, b=15,  mean = v, sd = W.tune)
     for(i in 1:n.blocks){
       # propose new v for the i^th block
@@ -368,8 +361,8 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     # Gibbs update TAU using the gamma distribution
     phiQphi    <- qform_ST(Qspace = Q.space.trip, Qtime = Q.time.trip, phi = phi, nsites = n.sites)     
     tau_scale  <- phiQphi/2 + prior.tau2[2]
-    tau        <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_phi_shape, scale=(1/tau_scale))
-    
+    #tau        <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_phi_shape, scale=(1/tau_scale))
+    tau        <- 1/rtgamma(n=1, shape=tau_phi_shape, scale=tau_scale, min=0.000001, max=Inf)
     # calculate the deviance
     lp <- as.vector(XB) + phi + offset
     prob <- exp(lp) / (1+exp(lp))

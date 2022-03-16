@@ -137,8 +137,6 @@ accept <- rep(0,6)
 proposal.sd.phi <- 0.1
 proposal.sd.rho <- 0.05
 proposal.sd.beta <- 0.01
-proposal.corr.beta <- solve(t(X.standardised) %*% X.standardised)
-chol.proposal.corr.beta <- chol(proposal.corr.beta)     
 tau2.shape <- prior.tau2[1] + N.all/2
 
 

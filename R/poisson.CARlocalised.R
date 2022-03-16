@@ -203,8 +203,6 @@ regression.mat <- matrix(regression.vec, nrow=K, ncol=N, byrow=FALSE)
     ####################
         if(!is.null(X))
         {
-        proposal <- beta + (sqrt(proposal.sd.beta)* t(chol.proposal.corr.beta)) %*% rnorm(p)
-        proposal.beta <- beta
         offset.temp <- offset + as.numeric(mu) + as.numeric(phi.mat)   
             if(MALA)
             {
