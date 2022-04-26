@@ -254,8 +254,8 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     
     # Gibbs update of tau_v
     tau_scale  <- vqform_current/2 + prior.tau2[2]
-    #tau_v      <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_v.shape, scale=(1/tau_scale))
-    tau_v      <- 1/rtgamma(n=1, shape=tau_v.shape, scale=tau_scale, min=0.000001, max=Inf)
+    tau_v      <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_v.shape, scale=(1/tau_scale))
+    #tau_v      <- 1/rtgamma(n=1, shape=tau_v.shape, scale=tau_scale, min=0.000001, max=Inf)
     v.proposal <- rtruncnorm(n = n.edges, a=-15, b=15,  mean = v, sd = W.tune)
     for(i in 1:n.blocks){
       # propose new v for the i^th block
@@ -361,8 +361,8 @@ binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.samp
     # Gibbs update TAU using the gamma distribution
     phiQphi    <- qform_ST(Qspace = Q.space.trip, Qtime = Q.time.trip, phi = phi, nsites = n.sites)     
     tau_scale  <- phiQphi/2 + prior.tau2[2]
-    #tau        <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_phi_shape, scale=(1/tau_scale))
-    tau        <- 1/rtgamma(n=1, shape=tau_phi_shape, scale=tau_scale, min=0.000001, max=Inf)
+    tau        <- 1/rtrunc(n=1, spec="gamma", a=0.000001, b=Inf, shape=tau_phi_shape, scale=(1/tau_scale))
+    #tau        <- 1/rtgamma(n=1, shape=tau_phi_shape, scale=tau_scale, min=0.000001, max=Inf)
     # calculate the deviance
     lp <- as.vector(XB) + phi + offset
     prob <- exp(lp) / (1+exp(lp))
