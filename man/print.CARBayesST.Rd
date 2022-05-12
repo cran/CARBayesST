@@ -7,7 +7,7 @@ Print a summary of the fitted model to the screen.
 }
 \description{
 This function takes a CARBayesST object and returns a summary of the fitted model.
-The summary includes, for selected parameters, posterior medians and 95 percent 
+The summary includes, for selected parameters, posterior means and 95 percent 
 credible intervals, the effective number of independent samples and the Geweke 
 convergence diagnostic in the form of a Z-score.
 }

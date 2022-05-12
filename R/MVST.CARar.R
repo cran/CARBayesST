@@ -1,4 +1,4 @@
-MVST.CARar <- function(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample, thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.Sigma.df=NULL, prior.Sigma.scale=NULL, AR=NULL, rho.S=NULL, rho.T=NULL, MALA=FALSE, verbose=TRUE)
+MVST.CARar <- function(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample, thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.Sigma.df=NULL, prior.Sigma.scale=NULL, AR=NULL, rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 {
     ## This is a wrapper function for the following six functions.
     ## binomial.MVCARar1

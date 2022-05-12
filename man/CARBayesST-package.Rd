@@ -25,8 +25,8 @@ EP/T004878/1 and the Medical Research Council (MRC) grant MR/L022184/1.
 \tabular{ll}{
 Package: \tab CARBayesST\cr
 Type: \tab Package\cr
-Version: \tab 3.2.3\cr
-Date: \tab 2022-04-25\cr
+Version: \tab 3.3\cr
+Date: \tab 2022-05-13\cr
 License: \tab GPL (>= 2)\cr
 }
 }
@@ -54,6 +54,10 @@ Journal of Statistical Software, 84, 9, 1-39.
 
 Lee, D and Meeks, K and Pettersson, W (2021). Improved inference for areal unit count data using graph-based 
 optimisation. Statistics and Computing, 31:51.
+
+Lee D, Robertson C, and Marques, D (2022). Quantifying the small-area spatio-temporal 
+dynamics of the Covid-19 pandemic in Scotland during a period with limited testing 
+capacity, Spatial Statistics, https://doi.org/10.1016/j.spasta.2021.100508.
 
 Napier, G, D. Lee, C. Robertson, A. Lawson, and K. Pollock (2016). A model to estimate the 
 impact of changes in MMR vaccination uptake on inequalities in measles susceptibility in 

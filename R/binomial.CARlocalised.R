@@ -1,4 +1,4 @@
-binomial.CARlocalised <- function(formula, data=NULL, G, trials,  W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.delta=NULL, prior.tau2=NULL, MALA=FALSE, verbose=TRUE)
+binomial.CARlocalised <- function(formula, data=NULL, G, trials,  W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.delta=NULL, prior.tau2=NULL, MALA=TRUE, verbose=TRUE)
 {
 ##############################################
 #### Format the arguments and check for errors
@@ -481,16 +481,15 @@ residuals <- data.frame(response=response.residuals, pearson=pearson.residuals)
     
 #### Create a summary object
 summary.hyper <- array(NA, c(3, 7))     
-summary.hyper[1,1:3] <- quantile(samples.delta, c(0.5, 0.025, 0.975))
-summary.hyper[2,1:3] <- quantile(samples.tau2, c(0.5, 0.025, 0.975))
-summary.hyper[3,1:3] <- quantile(samples.gamma, c(0.5, 0.025, 0.975))
+summary.hyper[1,1:3] <- c(mean(samples.delta), quantile(samples.delta, c(0.025, 0.975)))
+summary.hyper[2,1:3] <- c(mean(samples.tau2), quantile(samples.tau2, c(0.025, 0.975)))
+summary.hyper[3,1:3] <- c(mean(samples.gamma), quantile(samples.gamma, c(0.025, 0.975)))
 rownames(summary.hyper) <- c("delta", "tau2", "rho.T")      
 summary.hyper[1, 4:7] <- c(n.keep, accept.delta, effectiveSize(mcmc(samples.delta)), geweke.diag(mcmc(samples.delta))$z)   
 summary.hyper[2, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.tau2)), geweke.diag(mcmc(samples.tau2))$z)   
 summary.hyper[3, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.gamma)), geweke.diag(mcmc(samples.gamma))$z)   
-    
-summary.lambda <- array(NA, c(G,1))
-summary.lambda <- t(apply(samples.lambda, 2, quantile, c(0.5, 0.025, 0.975)))
+
+summary.lambda <- t(rbind(apply(samples.lambda, 2, mean), apply(samples.lambda, 2, quantile, c(0.025, 0.975)))) 
 summary.lambda <- cbind(summary.lambda, rep(n.keep, G), rep(accept.lambda, G), effectiveSize(mcmc(samples.lambda)), geweke.diag(mcmc(samples.lambda))$z)
 summary.lambda <- matrix(summary.lambda, ncol=7)
 rownames(summary.lambda) <- paste("lambda", 1:G, sep="")
@@ -498,10 +497,10 @@ rownames(summary.lambda) <- paste("lambda", 1:G, sep="")
     if(!is.null(X))
     {
     samples.beta.orig <- mcmc(samples.beta.orig)
-    summary.beta <- t(apply(samples.beta.orig, 2, quantile, c(0.5, 0.025, 0.975))) 
+    summary.beta <- t(rbind(apply(samples.beta.orig, 2, mean), apply(samples.beta.orig, 2, quantile, c(0.025, 0.975)))) 
     summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.beta,p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
     rownames(summary.beta) <- colnames(X)
-    colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+    colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
     summary.results <- rbind(summary.beta, summary.lambda, summary.hyper)    
     }else
     {
@@ -510,7 +509,7 @@ rownames(summary.lambda) <- paste("lambda", 1:G, sep="")
     
 summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
 summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
-colnames(summary.results) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")    
+colnames(summary.results) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")    
     
     
     

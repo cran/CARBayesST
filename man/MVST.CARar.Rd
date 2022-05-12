@@ -29,7 +29,7 @@ Bayesian setting using Markov chain Monte Carlo (MCMC) simulation.
 \usage{
 MVST.CARar(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample, thin=1, 
 prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.Sigma.df=NULL, 
-prior.Sigma.scale=NULL, AR=NULL, rho.S=NULL, rho.T=NULL, MALA=FALSE, verbose=TRUE)
+prior.Sigma.scale=NULL, AR=NULL, rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 }
 
 
@@ -81,19 +81,27 @@ assumed). Defaults to a vector of zeros.
 }
 \item{prior.var.beta}{
 A vector of prior variances for the regression parameters beta (Gaussian priors 
-are assumed). Defaults to a vector with values 100000.
+are assumed). Defaults to a vector with values 100,000.
 }   
 \item{prior.nu2}{
 The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
 prior for nu2_j for each outcome j. Defaults to c(1, 0.01) and only used if family="Gaussian".   
 }
 \item{prior.Sigma.df}{
-    The prior degrees of freedom for the Inverse-Wishart prior for Sigma. 
-    Defaults to J+1.   
+    The degrees of freedom for the Inverse-Wishart prior formulation for the 
+    covariance matrix Sigma. This prior formulation follows the marginally 
+    weakly-informative specification proposed by Huang and Wand (2013). Defaults 
+    to 2, which corresponds to non-informative uniform priors on the interval [-1,1]
+    being assigned to each correlation parameter within the Sigma matrix. 
 }
 \item{prior.Sigma.scale}{
-    The prior J times J scale matrix for the Inverse-Wishart prior for Sigma. 
-    Defaults to the identity matrix divided by 1000.
+    The J times 1  vector of prior scales for the  square roots of the diagonal 
+    elements of the covariance matrix Sigma. This prior formulation is the marginally 
+    weakly-informative prior specification proposed by Huang and Wand (2013). Thus,
+    the jth element of this vector is the scale parameter for the zero centred
+    half-t prior (with shape given by prior.Sigma.df) assumed for the standard 
+    deviation of the random effects corresponding to the jth outcome. Defaults to 
+    a vector of values of 100,000.
 }
 \item{AR}{
 The order of the autoregressive time series process that must be either 1 or 2. 
@@ -111,7 +119,7 @@ a vector of length two with the first and second order autoregressive coefficien
 }
 \item{MALA}{
 Logical, should the function use Metropolis adjusted Langevin algorithm (MALA)
-updates (TRUE) or simple random walk (FALSE, default) updates for the regression 
+updates (TRUE, default) or simple random walk (FALSE) updates for the regression 
 parameters. Not applicable if family="gaussian".    
 }
 \item{verbose}{
@@ -141,6 +149,25 @@ offset parts of the model.}
 \item{model }{A text string describing the model fit.}
 \item{X }{The design matrix of covariates.}
 }
+
+
+\references{
+Gelfand, A and Vounatsou, P (2003). Proper multivariate conditional autoregressive
+models for spatial data analysis, Biostatistics, 4, 11-25.
+
+Huang, A., and Wand, M (2013). Simple Marginally Noninformative Prior Distributions 
+for Covariance Matrices. Bayesian Analysis, 8, 439-452.
+
+Lee D, Robertson C, and Marques, D (2022). Quantifying the small-area spatio-temporal 
+dynamics of the Covid-19 pandemic in Scotland during a period with limited testing 
+capacity, Spatial Statistics, https://doi.org/10.1016/j.spasta.2021.100508.
+
+Leroux B, Lei X, Breslow N (2000). "Estimation of Disease Rates in SmallAreas: A 
+New Mixed Model for Spatial Dependence." In M Halloran, D Berry (eds.), 
+\emph{Statistical Models in Epidemiology, the Environment and Clinical Trials},
+pp. 179-191. Springer-Verlag, New York.
+}
+
 
 
 \author{
@@ -217,11 +244,9 @@ formula <- Y.mat~x1
 #### Run the model
 formula <- Y.mat ~ x1
 \dontrun{mod <- MVST.CARar(formula=formula, family="binomial", trials=trials.mat, W=W, 
-burnin=10000, n.sample=50000, prior.Sigma.scale=matrix(c(0.01, 0, 0, 0.01), nrow=2), 
-AR=1, MALA=FALSE)}
+burnin=10000, n.sample=50000, AR=1, MALA=FALSE)}
 
 #### Toy example for checking
 mod <- MVST.CARar(formula=formula, family="binomial", trials=trials.mat, W=W, 
-burnin=10, n.sample=50, prior.Sigma.scale=matrix(c(0.01, 0, 0, 0.01), nrow=2), 
-AR=1, MALA=FALSE)
+burnin=10, n.sample=50, AR=1, MALA=FALSE)
 }

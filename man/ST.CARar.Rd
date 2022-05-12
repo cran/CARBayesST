@@ -27,7 +27,7 @@ Carlo (MCMC) simulation.
 \usage{
 ST.CARar(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample, thin=1, 
 prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.tau2=NULL,
-AR=NULL, rho.S=NULL, rho.T=NULL, MALA=FALSE, verbose=TRUE)
+AR=NULL, rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 }
 
 
@@ -77,7 +77,7 @@ assumed). Defaults to a vector of zeros.
 }
 \item{prior.var.beta}{
 A vector of prior variances for the regression parameters beta (Gaussian priors 
-are assumed). Defaults to a vector with values 100000.
+are assumed). Defaults to a vector with values 100,000.
 }   
 \item{prior.nu2}{
 The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
@@ -103,7 +103,7 @@ a vector of length two with the first and second order autoregressive coefficien
 }
 \item{MALA}{
 Logical, should the function use Metropolis adjusted Langevin algorithm (MALA)
-updates (TRUE) or simple random walk (FALSE, default) updates for the regression 
+updates (TRUE, default) or simple random walk (FALSE) updates for the regression 
 parameters. Not applicable if family="gaussian".    
 }
 \item{verbose}{

@@ -394,20 +394,20 @@ samples.beta.orig <- common.betatransform(samples.beta, X.indicator, X.mean, X.s
 
 #### Create a summary object
 samples.beta.orig <- mcmc(samples.beta.orig)
-summary.beta <- t(apply(samples.beta.orig, 2, quantile, c(0.5, 0.025, 0.975))) 
+summary.beta <- t(rbind(apply(samples.beta.orig, 2, mean), apply(samples.beta.orig, 2, quantile, c(0.025, 0.975)))) 
 summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.beta,p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
 rownames(summary.beta) <- colnames(X)
-colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
 
 summary.hyper <- array(NA, c(5, 7))    
 rownames(summary.hyper) <- c("tau2", "nu2", "rho.S", "rho1.T", "rho2.T")     
-summary.hyper[1,1:3] <- quantile(samples.tau2, c(0.5, 0.025, 0.975))
-summary.hyper[2,1:3] <- quantile(samples.nu2, c(0.5, 0.025, 0.975))
+summary.hyper[1,1:3] <- c(mean(samples.tau2), quantile(samples.tau2, c(0.025, 0.975)))
+summary.hyper[2,1:3] <- c(mean(samples.nu2), quantile(samples.nu2, c(0.025, 0.975)))
 summary.hyper[1, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.tau2)), geweke.diag(mcmc(samples.tau2))$z)    
 summary.hyper[2, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.nu2)), geweke.diag(mcmc(samples.nu2))$z) 
   if(!fix.rho.S)
   {
-  summary.hyper[3, 1:3] <- quantile(samples.rho, c(0.5, 0.025, 0.975))
+  summary.hyper[3, 1:3] <- c(mean(samples.rho), quantile(samples.rho, c(0.025, 0.975)))
   summary.hyper[3, 4:7] <- c(n.keep, accept.rho, effectiveSize(samples.rho), geweke.diag(samples.rho)$z)
   }else
   {
@@ -416,9 +416,9 @@ summary.hyper[2, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.nu2)), geweke
   }
 if(!fix.rho.T)
 {
-  summary.hyper[4, 1:3] <- quantile(samples.alpha[ ,1], c(0.5, 0.025, 0.975))
+  summary.hyper[4, 1:3] <- c(mean(samples.alpha[ ,1]), quantile(samples.alpha[ ,1], c(0.025, 0.975)))
   summary.hyper[4, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.alpha[ ,1])), geweke.diag(mcmc(samples.alpha[ ,1]))$z)
-  summary.hyper[5, 1:3] <- quantile(samples.alpha[ ,2], c(0.5, 0.025, 0.975))
+  summary.hyper[5, 1:3] <- c(mean(samples.alpha[ ,2]), quantile(samples.alpha[ ,2], c(0.025, 0.975)))
   summary.hyper[5, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.alpha[ ,2])), geweke.diag(mcmc(samples.alpha[ ,2]))$z)  
 }else
 {

@@ -959,7 +959,7 @@ binomial.CARclustrends <- function(formula, data=NULL, trials, W, burnin, n.samp
                       HPDinterval(mcmc(samples.tau2[,,chain.sel]), prob=0.95)[2]))
   summary.tau2 <- cbind(summary.tau2, rep(n.keep, 1), rep(100,1), effectiveSize(samples.tau2[,,chain.sel]),
                         geweke.diag(samples.tau2[,,chain.sel])$z)
-  colnames(summary.tau2) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+  colnames(summary.tau2) <- c("Mode", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
   rownames(summary.tau2) <- c("tau2")
   mode.rho <- density(samples.rho[,,chain.sel])
   mode.rho <- mean(mode.rho$x[which(mode.rho$y==max(mode.rho$y))])
@@ -967,7 +967,7 @@ binomial.CARclustrends <- function(formula, data=NULL, trials, W, burnin, n.samp
                      HPDinterval(mcmc(samples.rho[,,chain.sel]), prob=0.95)[2]))
   summary.rho <- cbind(summary.rho, rep(n.keep, 1), rep(accept.rho,1), effectiveSize(samples.rho[,,chain.sel]),
                        geweke.diag(samples.rho[,,chain.sel])$z)
-  colnames(summary.rho) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+  colnames(summary.rho) <- c("Mode", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
   rownames(summary.rho) <- c("rho")
   summary.results <- rbind(summary.beta, summary.gamma, summary.lambda, summary.tau2, summary.rho)
   summary.results[,1:3] <- round(summary.results[,1:3],4)

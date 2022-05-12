@@ -93,7 +93,7 @@ assumed). Defaults to a vector of zeros.
 }
 \item{prior.var.beta}{
 A vector of prior variances for the regression parameters beta (Gaussian priors 
-are assumed). Defaults to a vector with values 100000.
+are assumed). Defaults to a vector with values 100,000.
 }  
 \item{prior.mean.gamma}{
 A vector of prior means for the temporal trend parameters (Gaussian priors are 
@@ -101,7 +101,7 @@ assumed). Defaults to a vector of zeros.
 }
 \item{prior.var.gamma}{
 A vector of prior variances for the temporal trend parameters (Gaussian priors 
-are assumed). Defaults to a vector with values 100000.
+are assumed). Defaults to a vector with values 100,000.
 }  
 \item{prior.lambda}{
 A vector of prior samples sizes for the Dirichlet prior controlling the 

@@ -7,77 +7,81 @@ options(prompt = "R>  ")
 
 
 ###################################################
-### code chunk number 2: CARBayesST.Rnw:517-521
+### code chunk number 2: CARBayesST.Rnw:530-534
 ###################################################
 library("CARBayesdata")
-library("sp")
-data("GGHB.IG")
+library("sf")
+data("GGHB.IZ")
 data("pollutionhealthdata")
 
 
 ###################################################
-### code chunk number 3: CARBayesST.Rnw:527-528
+### code chunk number 3: CARBayesST.Rnw:540-544
 ###################################################
+class(GGHB.IZ)
+head(GGHB.IZ)
+class(pollutionhealthdata)
 head(pollutionhealthdata)
 
 
 ###################################################
-### code chunk number 4: CARBayesST.Rnw:533-537
+### code chunk number 4: CARBayesST.Rnw:549-554
 ###################################################
 library(dplyr)
 pollutionhealthdata <- pollutionhealthdata %>% mutate( 
           SMR = pollutionhealthdata$observed / pollutionhealthdata$expected, 
           logSMR = log(pollutionhealthdata$observed / pollutionhealthdata$expected))
+head(pollutionhealthdata)
 
 
 ###################################################
-### code chunk number 5: CARBayesST.Rnw:543-545
+### code chunk number 5: CARBayesST.Rnw:560-562
 ###################################################
 library(GGally)
 ggpairs(pollutionhealthdata, columns=c(9, 5:7))
 
 
 ###################################################
-### code chunk number 6: CARBayesST.Rnw:560-563
+### code chunk number 6: CARBayesST.Rnw:577-581
 ###################################################
-group_IG <- group_by(pollutionhealthdata, IG)
-SMR.av <- summarise(group_IG, SMR.mean = mean(SMR))
-GGHB.IG@data$SMR <- SMR.av$SMR.mean
+group_IZ <- group_by(pollutionhealthdata, IZ)
+SMR.av <- summarise(group_IZ, SMR.mean = mean(SMR))
+GGHB.IZ$SMR <- SMR.av$SMR.mean
+head(GGHB.IZ)
 
 
 ###################################################
-### code chunk number 7: CARBayesST.Rnw:570-572
+### code chunk number 7: CARBayesST.Rnw:588-589
 ###################################################
-library(rgdal)
-GGHB.IG <- spTransform(GGHB.IG, CRS("+proj=longlat +datum=WGS84 +no_defs"))
+GGHB.IZ <- st_transform(x=GGHB.IZ, crs='+proj=longlat +datum=WGS84 +no_defs')
 
 
 ###################################################
-### code chunk number 8: CARBayesST.Rnw:577-587
+### code chunk number 8: CARBayesST.Rnw:594-604
 ###################################################
 library(leaflet)
-colours <- colorNumeric(palette = "YlOrRd", domain = GGHB.IG@data$SMR)
-map1 <- leaflet(data=GGHB.IG) %>% 
+colours <- colorNumeric(palette = "YlOrRd", domain = GGHB.IZ$SMR)
+leaflet(data=GGHB.IZ) %>% 
     addTiles() %>% 
-    addPolygons(fillColor = ~colours(SMR), weight=1, color="",
+    addPolygons(fillColor = ~colours(GGHB.IZ$SMR), 
+                color="grey", weight=1, 
                 fillOpacity = 0.7) %>%
-    addLegend(pal = colours, values = GGHB.IG@data$SMR, opacity = 1, 
-                title="SMR") %>%
+    addLegend(pal = colours, values = GGHB.IZ$SMR, 
+              opacity = 1, title="SMR") %>%
     addScaleBar(position="bottomleft")
-map1
 
 
 ###################################################
-### code chunk number 9: CARBayesST.Rnw:602-606
+### code chunk number 9: CARBayesST.Rnw:619-623
 ###################################################
 library("spdep")
-W.nb <- poly2nb(GGHB.IG, row.names = SMR.av$IG)
+W.nb <- poly2nb(GGHB.IZ, row.names = GGHB.IZ$IZ)
 W.list <- nb2listw(W.nb, style = "B")
 W <- nb2mat(W.nb, style = "B")
 
 
 ###################################################
-### code chunk number 10: CARBayesST.Rnw:615-621
+### code chunk number 10: CARBayesST.Rnw:632-638
 ###################################################
 formula <- observed ~ offset(log(expected)) + jsa + price + pm10
 model1 <- glm(formula = formula, family = "quasipoisson", 
@@ -88,23 +92,23 @@ summary(model1)$dispersion
 
 
 ###################################################
-### code chunk number 11: CARBayesST.Rnw:626-627
+### code chunk number 11: CARBayesST.Rnw:643-644
 ###################################################
 moran.mc(x = resid.glm[1:271], listw = W.list, nsim = 10000)
 
 
 ###################################################
-### code chunk number 12: CARBayesST.Rnw:780-785
+### code chunk number 12: CARBayesST.Rnw:799-804
 ###################################################
 library("CARBayesdata")
-library("sp")
-data("GGHB.IG")
+library("sf")
+data("GGHB.IZ")
 data("salesdata")
 head(salesdata)
 
 
 ###################################################
-### code chunk number 13: CARBayesST.Rnw:791-798
+### code chunk number 13: CARBayesST.Rnw:810-817
 ###################################################
 salesdata <- salesdata %>% mutate(salesprop = salesdata$sales / salesdata$stock)
 library(ggplot2)
@@ -116,37 +120,37 @@ ggplot(salesdata, aes(x = factor(year), y = salesprop)) +
 
 
 ###################################################
-### code chunk number 14: CARBayesST.Rnw:811-815
+### code chunk number 14: CARBayesST.Rnw:830-835
 ###################################################
 library(dplyr)
-group_IG <- group_by(salesdata, IG)
-salesprop <- summarise(group_IG, salesproprtion.mean = mean(salesprop))
-GGHB.IG@data$sales <- salesprop$salesproprtion.mean
+group_IZ <- group_by(salesdata, IZ)
+salesprop <- summarise(group_IZ, salesproprtion.mean = mean(salesprop))
+GGHB.IZ$sales <- salesprop$salesproprtion.mean
+head(GGHB.IZ)
 
 
 ###################################################
-### code chunk number 15: CARBayesST.Rnw:820-833
+### code chunk number 15: CARBayesST.Rnw:840-852
 ###################################################
-library(rgdal)
-GGHB.IG <- spTransform(GGHB.IG, CRS("+proj=longlat +datum=WGS84 +no_defs"))
+GGHB.IZ <- st_transform(x=GGHB.IZ, crs='+proj=longlat +datum=WGS84 +no_defs')
 
 library(leaflet)
-colours <- colorNumeric(palette = "YlOrRd", domain = GGHB.IG@data$sales)
-map1 <- leaflet(data=GGHB.IG) %>% 
+colours <- colorNumeric(palette = "YlOrRd", domain = GGHB.IZ$sales)
+map1 <- leaflet(data=GGHB.IZ) %>% 
     addTiles() %>% 
-    addPolygons(fillColor = ~colours(sales), color="", weight=1, 
+    addPolygons(fillColor = ~colours(sales), color="grey", weight=1, 
                 fillOpacity = 0.7) %>%
-    addLegend(pal = colours, values = GGHB.IG@data$sales, opacity = 1, 
-                title="Sales") %>%
+    addLegend(pal = colours, values = GGHB.IZ$sales, opacity = 1, 
+              title="Sales") %>%
     addScaleBar(position="bottomleft")
 map1
 
 
 ###################################################
-### code chunk number 16: CARBayesST.Rnw:851-854
+### code chunk number 16: CARBayesST.Rnw:870-873
 ###################################################
 library("spdep")
-W.nb <- poly2nb(GGHB.IG, row.names = salesprop$salesproprtion.mean)
+W.nb <- poly2nb(GGHB.IZ, row.names = GGHB.IZ$IZ)
 W <- nb2mat(W.nb, style = "B")
 
 

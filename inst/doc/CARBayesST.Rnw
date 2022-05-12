@@ -39,7 +39,7 @@
 %% almost as usual
 \author{Duncan Lee, Alastair Rushworth, Gary Napier and William Pettersson
 \\University of Glasgow}
-\title{\pkg{CARBayesST} version 3.2.3: Spatio-Temporal Areal Unit Modelling in \proglang{R} with Conditional Autoregressive Priors}
+\title{\pkg{CARBayesST} version 3.3: Spatio-Temporal Areal Unit Modelling in \proglang{R} with Conditional Autoregressive Priors}
 
 %% for pretty printing and a nice hypersummary also set:
 \Plainauthor{Duncan Lee, Alastair Rushworth, Gary Napier, William Pettersson} %% comma-separated
@@ -49,7 +49,7 @@
 
 %% an abstract and keywords
 \Abstract{
-This is a vignette for the \proglang{R} package \pkg{CARBayesST} version 3.2.3, and is an updated version of a paper in the Journal of Statistical Software in 2018, Volume 84, Issue 9. The package has been developed to model spatio-temporal data relating to a set of non-overlapping areal units that are observed over multiple time periods. These data typically contain spatio-temporal autocorrelation, and this package provides a suite of models for capturing this autocorrelation via random effects that are assigned spatio-temporal extensions of conditional autoregressive (CAR) priors within a hierarchical Bayesian model. \pkg{CARBayesST} is the first dedicated \proglang{R} package for modelling these data in a Bayesian setting using Markov chain Monte carlo (MCMC) simulation. The software can fit a range of models that estimate different aspects of the data, including the estimation of average spatial and temporal trends, and the identification of clusters of areal units that exhibit elevated values. This vignette outlines the class of models that the software can implement, before applying them to exemplar case studies.
+This is a vignette for the \proglang{R} package \pkg{CARBayesST} version 3.3, and is an updated version of a paper in the Journal of Statistical Software in 2018, Volume 84, Issue 9. The package has been developed to model spatio-temporal data relating to a set of non-overlapping areal units that are observed over multiple time periods. These data typically contain spatio-temporal autocorrelation, and this package provides a suite of models for capturing this autocorrelation via random effects that are assigned spatio-temporal extensions of conditional autoregressive (CAR) priors within a hierarchical Bayesian model. \pkg{CARBayesST} is the first dedicated \proglang{R} package for modelling spatio-temporal areal unit data in a Bayesian setting using Markov chain Monte carlo (MCMC) simulation. The software can fit a range of models with different spatio-temporal structures, including average spatial and temporal trends, and the identification of clusters of areal units that exhibit elevated values. This vignette outlines the class of models that the software can implement, before applying them to exemplar case studies.
 
 }
 \Keywords{Bayesian inference, conditional autoregressive priors, spatio-temporal areal unit modelling}
@@ -118,10 +118,10 @@ The study region comprises a set of $k=1,\ldots,K$ non-overlapping areal units $
 \begin{eqnarray}
 Y_{kt}|\mu_{kt}&\sim&f(y_{kt}|\mu_{kt},\nu^{2})~~~~\mbox{for }k=1,\ldots,K,~~t=1,\ldots,N,\label{equation likelihood}\\
 g(\mu_{kt})&=&\mathbf{x}_{kt}^{\top}\bd{\beta} + O_{kt} + \psi_{kt},\nonumber\\
-\bd{\beta}&\sim&\mbox{N}(\bd{\mu}_{\beta}, \bd{\Sigma}_{\beta}).\nonumber
+\bd{\beta}&\sim&\mbox{N}(\bd{\mu}_{\beta}, \bd{\Sigma}_{\beta}),\nonumber
 \end{eqnarray}
 
-The vector of covariate regression parameters are denoted by $\bd{\beta}=(\beta_{1},\ldots,\beta_{p})$, and a multivariate Gaussian prior is assumed with mean $\bd{\mu}_{\beta}$ and diagonal variance matrix $\bd{\Sigma}_{\beta}$  that can be chosen by the user. The $\psi_{kt}$ term is a latent component for areal unit $k$ and time period $t$ encompassing one or more sets of spatio-temporally autocorrelated random effects, and the complete set are denoted by $\bd{\psi}=(\bd{\psi}_{1},\ldots,\bd{\psi}_{N})$, where $\bd{\psi}_{t}=(\psi_{1t},\ldots,\psi_{Kt})$. \pkg{CARBayesST} can fit a number of different spatio-temporal structures for $\psi_{kt}$, which are outlined in Section \ref{section2.2} below. The software can implement Equation \ref{equation likelihood} for binomial, Gaussian and Poisson data models, and the exact specifications of each are given below:
+where $\mu_{kt}$ denotes the expectation of $Y_{kt}$. The vector of covariate regression parameters are denoted by $\bd{\beta}=(\beta_{1},\ldots,\beta_{p})$, and a multivariate Gaussian prior is assumed with mean $\bd{\mu}_{\beta}$ and diagonal variance matrix $\bd{\Sigma}_{\beta}$  that can be chosen by the user. The $\psi_{kt}$ term is a latent component for areal unit $k$ and time period $t$ encompassing one or more sets of spatio-temporally autocorrelated random effects, and the complete set are denoted by $\bd{\psi}=(\bd{\psi}_{1},\ldots,\bd{\psi}_{N})$, where $\bd{\psi}_{t}=(\psi_{1t},\ldots,\psi_{Kt})$. \pkg{CARBayesST} can fit a number of different spatio-temporal structures for $\psi_{kt}$, which are outlined in Section \ref{section2.2} below. The software can implement Equation (\ref{equation likelihood}) for binomial, Gaussian and Poisson data models, and the exact specifications of each are given below:
 
 \begin{itemize}
 \item \textbf{Binomial} -  $Y_{kt}~\sim~\mbox{Binomial}(n_{kt}, \theta_{kt})$ and $\ln(\theta_{kt}/(1-\theta_{kt}))~=~\mathbf{x}_{kt}^{\top}\bd{\beta} + O_{kt} + \psi_{kt}$. 
@@ -135,7 +135,7 @@ In the binomial model $(n_{kt}, \theta_{kt})$ respectively denote the number of 
 
 
 \subsection{Spatio-temporal random effects models}\label{section2.2}
-Spatial autocorrelation is controlled by a symmetric non-negative $K\times K$ neighbourhood or adjacency matrix $\mathbf{W}=(w_{kj})$, where $w_{kj}$ represents the spatial closeness between areal units $(\mathcal{S}_k, \mathcal{S}_j)$. Larger values represent spatial closeness between the two areas in question, where as smaller or zero values correspond to areas that are not spatially close. Most often $\mathbf{W}$ is assumed to be binary, where $w_{kj}=1$ if areal units $(\mathcal{S}_k, \mathcal{S}_j)$ share a common border (i.e., are spatially close) and is zero otherwise. Additionally, $w_{kk}=0$. Under this binary specification the values of $(\psi_{kt}, \psi_{jt})$ for spatially adjacent areal units (where $w_{kj}=1$) are spatially autocorrelated, where as values for non-neighbouring areal units (where $w_{kj}=0$) are conditionally independent given the remaining $\{\psi_{it}\}$ values. This binary specification of $\mathbf{W}$ based on sharing a common border is the most commonly used for areal data, but the only requirement by \pkg{CARBayesST} is for $\mathbf{W}$ to be symmetric, non-negative, and for each row sum to be greater than zero. Similarly, the model \code{ST.CARanova()} defined below uses a binary $N\times N$ temporal neighbourhood matrix $\mathbf{D}=(d_{tj})$, where $d_{tj}=1$ if $|j-t|=1$ and $d_{tj}=0$ otherwise.\\ 
+Spatial autocorrelation is controlled by a symmetric non-negative $K\times K$ neighbourhood or adjacency matrix $\mathbf{W}=(w_{kj})$, where $w_{kj}$ represents the spatial closeness between areal units $(\mathcal{S}_k, \mathcal{S}_j)$. Larger values represent spatial closeness between the two areas in question, where as smaller or zero values correspond to areas that are not spatially close. Most often $\mathbf{W}$ is assumed to be binary, where $w_{kj}=1$ if areal units $(\mathcal{S}_k, \mathcal{S}_j)$ share a common border (i.e., are spatially close) and is zero otherwise. Additionally, $w_{kk}=0$ for all areal units $k$. Under this binary specification the values of $(\psi_{kt}, \psi_{jt})$ for spatially adjacent areal units (where $w_{kj}=1$) are spatially autocorrelated, where as values for non-neighbouring areal units (where $w_{kj}=0$) are conditionally independent given the remaining $\{\psi_{it}\}$ values. This binary specification of $\mathbf{W}$ based on sharing a common border is the most commonly used for areal data, but the only requirement by \pkg{CARBayesST} is for $\mathbf{W}$ to be symmetric, non-negative, and for each row sum to be greater than zero. Similarly, the model \code{ST.CARanova()} defined below uses a binary $N\times N$ temporal neighbourhood matrix $\mathbf{D}=(d_{tj})$, where $d_{tj}=1$ if $|j-t|=1$ and $d_{tj}=0$ otherwise.\\ 
 
 \begin{table}
 \begin{tabular}{p{0.22\linewidth}p{0.1\linewidth}p{0.68\linewidth}}
@@ -146,7 +146,7 @@ Spatial autocorrelation is controlled by a symmetric non-negative $K\times K$ ne
 
 \code{ST.CARsepspatial()}&(\ref{carsepspat})& This model is that proposed by \cite{napier2016}, and represents the spatio-temporal pattern in the mean response with an overall temporal effect and separate independent spatial effects for each time period.  Allowable data models are binomial and Poisson.\\\hline
 
-\code{ST.CARar()}&(\ref{carar})& This model is that proposed by \cite{rushworth2014}, and represents the spatio-temporal pattern in the mean response with a single set of spatially and temporally autocorrelated random effects. The effects follow a multivariate autoregressive process of order 1. Allowable data models are binomial, Gaussian and Poisson.\\\hline
+\code{ST.CARar()}&(\ref{carar})& This model is that proposed by \cite{rushworth2014}, and represents the spatio-temporal pattern in the mean response with a single set of spatially and temporally autocorrelated random effects. These effects follow a multivariate autoregressive process of order 1 or 2. Allowable data models are binomial, Gaussian and Poisson.\\\hline
 
 \code{ST.CARadaptive()}&(\ref{caradaptive1})& This model is that proposed by \cite{rushworth2016}, and has the same spatio-temporal random effect structure as the \code{ST.CARar()} model, but with an adaptive spatial autocorrelation structure via estimation of $\mathbf{W}$. Allowable data models are binomial, Gaussian and Poisson.\\\hline
 
@@ -173,7 +173,7 @@ This model  is a modification of that proposed by \cite{bernardinelli1995}, and 
 \alpha&\sim&\mbox{N}(\mu_{\alpha}, \sigma^2_{\alpha}),\nonumber
 \end{eqnarray}
 
-where $\bd{\phi}_{-k}=(\phi_{1},\ldots,\phi_{k-1}, \phi_{k+1},\ldots,\phi_{K})$ and $\bd{\delta}_{-k}=(\delta_{1},\ldots,\delta_{k-1}, \delta_{k+1},\ldots,\delta_{K})$. Here $\bar{t}=(1/N)\sum_{t=1}^N t$, and the linear temporal trend $t^{*}=(t - \bar{t})/N$ runs over a centred unit interval.  Thus areal unit $k$ has its own linear time trend, with a spatially varying intercept $\beta_{1}+\phi_{k}$ and a spatially varying slope $\alpha+\delta_{k}$. Note, the $\beta_1$ term comes from the covariate component $\mathbf{x}_{kt}^{\top}\bd{\beta}$ in (\ref{equation likelihood}). The random effects $\bd{\phi}=(\phi_1,\ldots,\phi_K)$ and  $\bd{\delta}=(\delta_1,\ldots,\delta_K)$ are modelled as spatially autocorrelated by the CAR prior proposed by \cite{leroux2000}, and are mean centred, that is $\sum_{k=1}^{K}\phi_{k}=\sum_{k=1}^{K}\delta_{k}=0$. Here $(\rho_{int}, \rho_{slo})$ are spatial dependence parameters, with values of one corresponding to strong spatial smoothness that is equivalent to the intrinsic CAR prior proposed by  \cite{besag1991}, while values of zero correspond to independence (for example if $\rho_{slo}=0$ then $\delta_k\sim\mbox{N}(0, \tau^2_{slo})$). Flat uniform priors on the unit interval are specified for the spatial dependence parameters $(\rho_{int}, \rho_{slo})$, while conjugate inverse-gamma and Gaussian priors are specified for the random effects variances $(\tau^2_{int}, \tau^2_{slo})$ and the overall slope parameter $\alpha$ respectively. The corresponding hyperparameters $(a, b, \mu_{\alpha}, \sigma^2_{\alpha})$ can be chosen by the user, and the default values are $(a=1, ~b=0.01,~ \mu_{\alpha}=0,~ \sigma^2_{\alpha}=1000)$, which correspond to weakly informative prior distributions. Alternatively, the dependence parameters $(\rho_{int}, \rho_{slo})$ can be fixed at values in the unit interval $[0,1]$ rather than being estimated, by specifying arguments $(\rho_{int}, \rho_{slo})$ in  the \code{ST.CARlinear()} function. Finally, missing (\code{NA}) values are allowed in the response data $\mathbf{Y}$ for this model.\\
+where $\bd{\phi}_{-k}=(\phi_{1},\ldots,\phi_{k-1}, \phi_{k+1},\ldots,\phi_{K})$ and $\bd{\delta}_{-k}=(\delta_{1},\ldots,\delta_{k-1}, \delta_{k+1},\ldots,\delta_{K})$. Here $\bar{t}=(1/N)\sum_{t=1}^N t$, and the linear temporal trend $t^{*}=(t - \bar{t})/N$ runs over a centred unit interval.  Thus areal unit $k$ has its own linear time trend, with a spatially varying intercept $\beta_{1}+\phi_{k}$ and a spatially varying slope $\alpha+\delta_{k}$. Note, the $\beta_1$ term comes from the covariate component $\mathbf{x}_{kt}^{\top}\bd{\beta}$ in (\ref{equation likelihood}). The random effects $\bd{\phi}=(\phi_1,\ldots,\phi_K)$ and  $\bd{\delta}=(\delta_1,\ldots,\delta_K)$ are modelled as spatially autocorrelated by the CAR prior proposed by \cite{leroux2000}, and are mean centred, that is $\sum_{k=1}^{K}\phi_{k}=\sum_{k=1}^{K}\delta_{k}=0$. Here $(\rho_{int}, \rho_{slo})$ are spatial dependence parameters, with values of one corresponding to strong spatial smoothness that is equivalent to the intrinsic CAR prior proposed by  \cite{besag1991}, while values of zero correspond to independence (for example if $\rho_{slo}=0$ then $\delta_k\sim\mbox{N}(0, \tau^2_{slo})$). Flat uniform priors on the unit interval are specified for the spatial dependence parameters $(\rho_{int}, \rho_{slo})$, while conjugate inverse-gamma and Gaussian priors are specified for the random effects variances $(\tau^2_{int}, \tau^2_{slo})$ and the overall slope parameter $\alpha$ respectively. The corresponding hyperparameters $(a, b, \mu_{\alpha}, \sigma^2_{\alpha})$ can be chosen by the user, and the default values are $(a=1, ~b=0.01,~ \mu_{\alpha}=0,~ \sigma^2_{\alpha}=100,000)$, which correspond to weakly informative prior distributions. Alternatively, the dependence parameters $(\rho_{int}, \rho_{slo})$ can be fixed at values in the unit interval $[0,1]$ rather than being estimated, by specifying arguments $(\rho_{int}, \rho_{slo})$ in  the \code{ST.CARlinear()} function. Finally, missing (\code{NA}) values are allowed in the response data $\mathbf{Y}$ for this model.\\
 
 \code{ST.CARanova()}\\
 The model is a  modification of that proposed by \cite{knorrheld2000},  and decomposes the spatio-temporal variation in the data into 3 components, an overall spatial effect common to all time periods, an overall temporal trend common to all spatial units, and a set of independent space-time interactions. This model is appropriate if the goal is to estimate overall time trends and spatial patterns, and the model  is given by.
@@ -301,7 +301,7 @@ f(Z_{k1})&=&\frac{\exp(-\delta(Z_{k1}-G^{*})^{2})}{\sum_{r=1}^{G}\exp(-\delta(r-
 Temporal autocorrelation is induced by the $(Z_{kt}-Z_{k,t-1})^{2}$ component of the penalty, while the $(Z_{kt}-G^{*})^{2}$ component penalises class indicators $Z_{kt}$ towards the middle risk class $G^{*}$. The size of this penalty and hence the amount of smoothing that is imparted on $\mathbf{Z}$ is controlled by $\delta$, which is assigned a uniform prior. The default value is $m=10$, and full details of this model can be found in \cite{lee2016}. Missing (\code{NA}) values are not allowed in the response data $\mathbf{Y}$ in this model.\\
 
 \textbf{ST.CARclustrends()}\\
-The model is that proposed by \cite{napier2018} and represents the data by two components, an overall spatial pattern, and  a mixture of temporal trend functions with fixed parametric forms (e.g.\ linear, step-change) or constrained shapes (e.g.\ monotonically increasing). Note here that due to identifiability issues, covariates are not allowed in this model, but offsets (using the \code{offset()} function) are allowed. This model is appropriate if the goal is to identify clusters of areas that exhibit similar temporal trends. The model specification is given below.
+The model is that proposed by \cite{napier2018} and represents the latent random effects with an overall spatial pattern, and  a mixture of temporal trend functions with fixed parametric forms (e.g.\ linear, step-change) or constrained shapes (e.g.\ monotonically increasing). Note, that due to identifiability issues, covariates are not allowed in this model, but offsets (using the \code{offset()} function) are allowed. This model is appropriate if the goal is to identify clusters of areas that exhibit similar temporal trends. The model specification is given below.
 
 \begin{eqnarray}
 \psi_{kt} &=& \phi_k +  \sum_{s=1}^S   \omega_{ks} f_s(t|\bd{\gamma}_s),\label{carclustrends}\\
@@ -344,7 +344,7 @@ where $\bd{\phi}_{-k}=(\phi_1,\ldots,\phi_{k-1}, \phi_{k+1},\ldots,\phi_K)$. Thi
 
 
 \subsection{Inference}
-All models in this package are fitted in a Bayesian setting using Markov chain Monte Carlo simulation. All parameters whose full conditional distributions have a closed form distribution are Gibbs sampled, which includes the regression parameters $(\bd{\beta})$ and the random effects (e.g., $\bd{\phi}$ etc) in the Gaussian data models, as well as the variance parameters (e.g., $\tau^2$ etc) in all models. The remaining parameters are updated using Metropolis or Metropolis-Hastings steps, and the random effects in the binomial and Poisson data models are updated via the simple Gaussian random walk Metropolis algorithm. The regression parameters in the Poisson and binomial data models are updated in blocks of size 5 using either the simple Gaussian random walk Metropolis algorithm or the Metropolis Adjusted Langevin Algorithm (MALA, \citealp{roberts1998}). The default is to use simple random walk updates, but the user can choose MALA by specifying \code{MALA=TRUE} in the function call. The overall functions that implement the MCMC algorithms are written in \proglang{R}, while the computationally intensive updating steps are written as computationally efficient  \proglang{C++} routines using the \proglang{R} package \pkg{Rcpp} (\citealp{eddelbuettel2011}). Additionally, the sparsity of the neighbourhood matrices $\mathbf{W}$ and $\mathbf{D}$ are utilised via their triplet forms when updating the random effects  within the algorithms, which increases the computational efficiency of the software.
+All models in this package are fitted in a Bayesian setting using Markov chain Monte Carlo simulation. All parameters whose full conditional distributions have a closed form distribution are Gibbs sampled, which includes the regression parameters $(\bd{\beta})$ and the random effects (e.g., $\bd{\phi}$ etc) in the Gaussian data models, as well as the variance parameters (e.g., $\tau^2$ etc) in all models. The remaining parameters are updated using Metropolis or Metropolis-Hastings steps, and the random effects in the binomial and Poisson data models are updated via the simple Gaussian random walk Metropolis algorithm. The regression parameters in the Poisson and binomial data models are updated in blocks using either the simple Gaussian random walk Metropolis algorithm or the Metropolis Adjusted Langevin Algorithm (MALA, \citealp{roberts1998}). The default is to use MALA, but the user can choose simple random walk updates by specifying \code{MALA=FALSE} in the function call. The overall functions that implement the MCMC algorithms are written in \proglang{R}, while the computationally intensive updating steps are written as computationally efficient  \proglang{C++} routines using the \proglang{R} package \pkg{Rcpp} (\citealp{eddelbuettel2011}). Additionally, the sparsity of the neighbourhood matrices $\mathbf{W}$ and $\mathbf{D}$ are utilised via their triplet forms when updating the random effects  within the algorithms, which increases the computational efficiency of the software.
 
 \hspace{1cm} One of the challenges of fitting Bayesian models using any software is determining when the Markov chains have converged, and as a result how many samples to discard as the burn-in period and then how many more to generate on which to base inference. Convergence can be assessed using many metrics, the simplest of which is by eye, by viewing trace-plots of the parameters that should be stationary and show random fluctuations around a single mean level. In addition, \pkg{CARBayesST} presents the convergence  diagnostic proposed by \cite{geweke1992} for sample parameters when applying the \code{print()} function to a fitted model object, which uses the \code{geweke.diag()} function from the \pkg{coda} package. This statistic is in the form of a Z-score, and values between (-1.96, 1.96) are suggestive of convergence. A full discussion of how many samples to generate, burn-in lengths and whether or not to thin the Markov chains are beyond the scope of this vignette, and further details can be found in general texts on Bayesian modelling such as \cite{gelman2013}.
 
@@ -358,10 +358,10 @@ This section extends the previous one by outlining the class of multivariate spa
 \begin{eqnarray}
 Y_{ktj}|\mu_{ktj}&\sim&f(y_{ktj}|\mu_{ktj},\nu^{2}_j)~~~~\mbox{for }k=1,\ldots,K,~~t=1,\ldots,N,~~j=1,\ldots,J,\label{equation likelihood2}\\
 g(\mu_{ktj})&=&\mathbf{x}_{kt}^{\top}\bd{\beta}_j + O_{ktj} + \psi_{ktj},\nonumber\\
-\bd{\beta}&\sim&\mbox{N}(\bd{\mu}_{\beta}, \bd{\Sigma}_{\beta}).\nonumber
+\bd{\beta}_j&\sim&\mbox{N}(\bd{\mu}_{\beta}, \bd{\Sigma}_{\beta}),\nonumber
 \end{eqnarray}
 
-The regression coefficients $\bd{\beta}_j$ vary by response variable $j$, and Gaussian priors are assumed for the regression parameters $\bd{\beta}_j$ as before. The following data likelihood models are allowed:
+where again $\mu_{ktj}$ denotes the expectation of $Y_{ktj}$. The regression coefficients $\bd{\beta}_j$ vary by response variable $j$, and Gaussian priors are assumed for each vector of regression parameters $\bd{\beta}_j$ as before. The following data likelihood models are allowed:
 
 \begin{itemize}
 \item \textbf{Binomial - } $Y_{ktj}~\sim~\mbox{Binomial}(n_{ktj}, \theta_{ktj})$ and $\ln(\theta_{ktj}/(1-\theta_{ktj}))~=~\mathbf{x}_{kt}^{\top}\bd{\beta}_j + O_{ktj} + \psi_{ktj}$. 
@@ -376,19 +376,27 @@ As before, in the binomial model $(n_{ktj}, \theta_{ktj})$ respectively denote t
 
 
 \code{MVST.CARar()}\\
-This model represents the random effects $\{\psi_{ktj}\}$ with a single set of random effects $\{\phi_{ktj}\}$ that are modelled as jointly correlated over time, space and outcome, so that $\psi_{ktj}=\phi_{ktj}$. These random effects must therefore induce (auto)correlations in time, space and between outcomes. The entire set of random effects are denoted by $\boldsymbol{\phi}=(\boldsymbol{\phi}_1,\ldots, \boldsymbol{\phi}_N)$, where $\boldsymbol{\phi}_t=(\boldsymbol{\phi}_{1t}, \ldots, \boldsymbol{\phi}_{Kt})$ denotes the set of $K\times J$ random effects at time $t$, while $\boldsymbol{\phi}_{kt}=(\phi_{kt1},\ldots, \phi_{tkJ})$ denotes the subset of these effects at the $k$th areal unit for all $J$ outcomes. The general form of the model is given by
+This model was proposed by \cite{lee2022}, and represents the random effects $\{\psi_{ktj}\}$ with a single set of random effects $\{\phi_{ktj}\}$ that are modelled as jointly correlated over time, space and outcome, so that $\psi_{ktj}=\phi_{ktj}$. These random effects must therefore induce (auto)correlations in time, space and between outcomes. The entire set of random effects are denoted by $\boldsymbol{\phi}=(\boldsymbol{\phi}_1,\ldots, \boldsymbol{\phi}_N)$, where $\boldsymbol{\phi}_t=(\boldsymbol{\phi}_{1t}, \ldots, \boldsymbol{\phi}_{Kt})$ denotes the set of $K\times J$ random effects at time $t$, while $\boldsymbol{\phi}_{kt}=(\phi_{kt1},\ldots, \phi_{tkJ})$ denotes the subset of these effects at the $k$th areal unit for all $J$ outcomes. The general form of the model is given by
 
 \begin{eqnarray}
 \boldsymbol{\phi} &\sim& \mbox{N}\left(\mathbf{0}, \left[\mathbf{D}(\boldsymbol{\alpha}) \otimes \mathbf{Q}(\mathbf{W}, \rho)\otimes \boldsymbol{\Sigma}^{-1}\right]^{-1} \right),\label{eq_joint}
 \end{eqnarray}
 
-where $\otimes$ denotes a Kronecker product. The precision matrix is given by  $\mathbf{P}(\boldsymbol{\alpha},\rho, \boldsymbol{\Sigma})=\mathbf{D}(\boldsymbol{\alpha}) \otimes \mathbf{Q}(\mathbf{W}, \rho)\otimes \boldsymbol{\Sigma}^{-1}$, where $\mathbf{D}(\boldsymbol{\alpha})_{N\times N}$ controls the temporal autocorrelations, $\mathbf{Q}(\mathbf{W}, \rho)_{K\times K}$ controls the spatial autocorrelations and $\boldsymbol{\Sigma}_{J\times J}$ captures the between outcome correlations. The between outcome covariance matrix  $\boldsymbol{\Sigma}$ is not assigned a specific structure, and is instead assigned the following conjugate Inverse-Wishart prior distribution
+where $\otimes$ denotes a Kronecker product. The joint precision matrix is given by  $\mathbf{P}(\boldsymbol{\alpha},\rho, \boldsymbol{\Sigma})=\mathbf{D}(\boldsymbol{\alpha}) \otimes \mathbf{Q}(\mathbf{W}, \rho)\otimes \boldsymbol{\Sigma}^{-1}$, where $\mathbf{D}(\boldsymbol{\alpha})_{N\times N}$ controls the temporal autocorrelations, $\mathbf{Q}(\mathbf{W}, \rho)_{K\times K}$ controls the spatial autocorrelations and $\boldsymbol{\Sigma}_{J\times J}$ captures the between outcome correlations. The between outcome covariance matrix  $\boldsymbol{\Sigma}$ is not assigned a specific structure, and the correlations are instead estimated from the data. We specify the marginally weakly-informative prior for $\bd{\Sigma}$ that was designed for covariance matrices by \cite{huang2013}, which has the  Inverse-Wishart form:
 
 \begin{equation}
-    \boldsymbol{\Sigma}\sim\mbox{Inverse-Wishart}(d, \boldsymbol{\Omega}).
+    \boldsymbol{\Sigma}\sim\mbox{Inverse-Wishart}(df=\nu + J-1, \boldsymbol{\Omega}=2\nu\mbox{diag}(1/A_1,\ldots,1/A_J)),
 \end{equation}
 
-The default values for the hyperparameters are set at $(d=J+1, \boldsymbol{\Omega}=0.01\mathbf{I})$ where $\mathbf{I}$ is the identity matrix, and are chosen to ensure it is only weakly informative. Spatial autocorrelation is modelled by the conditional autoregressive (CAR) prior proposed by \cite{leroux2000} in common with the univariate models, which corresponds to the following spatial precision matrix
+where $J$ is the number of outcome variables being modelled. Here, $\mbox{diag}(1/A_1,\ldots,1/A_J)$ denotes a diagonal matrix with diagonal entries $(A_1,\ldots,A_J)$. Thus in the prior specification the user can specify the degrees of freedom $\nu$ via the scalar argument \code{prior.Sigma.df}, while the vector of scales $(A_1,\ldots,A_J)$ are specified by the vector argument \code{prior.Sigma.scale} in the function call. This prior is chosen because  \cite{huang2013} show that it is marginally weakly-informative, in the sense that:
+
+\begin{itemize}
+\item The standard deviation of the $j$th vector of random effects $\sqrt{\bd{\Sigma}}_{jj}$ is modelled by a zero centred half-t$(\nu, A_j)$ prior distribution with degrees of freedom $\nu$ and scale $A_j$. The default value used by the software is 100,000, so that the prior is only weakly informative. 
+
+\item The correlation parameters $\bd{\Sigma}_{ij}/\sqrt{\bd{\Sigma}_{ii}\bd{\Sigma}_{jj}}$, where $i\neq j$ are modelled with a non-informative Uniform$(-1,1)$ prior as long as $\nu=2$, which is the default value used by the software. 
+\end{itemize}
+
+Spatial autocorrelation is modelled by the conditional autoregressive (CAR) prior proposed by \cite{leroux2000} in common with the univariate models, which corresponds to the following spatial precision matrix
 
 \begin{eqnarray}
 \mathbf{Q}(\mathbf{W}, \rho)&=&\rho_S(\mbox{diag}[\mathbf{W1}] - \mathbf{W}) + (1-\rho_S)\mathbf{I}.\label{leroux}
@@ -421,13 +429,18 @@ f(\rho_T)&\propto& 1.\nonumber
 f(\rho_{T_1}, \rho_{T_2})&\propto& 1.\nonumber
 \end{eqnarray}
 
+
+\subsection{Inference}
+All models in this package are again fitted in a Bayesian setting using Markov chain Monte Carlo simulation, using similar updating steps to those used for the univariate models. 
+
+
 %%%%%%%%%%%%%%
 %%%% Section 4
 %%%%%%%%%%%%%%
 \section{Loading and using the software}\label{section4}
 
 \subsection{Loading the software}
-\pkg{CARBayesST} can be downloaded from the Comprehensive R Archive Network (CRAN, \url{http://cran.r-project.org/}) for Windows, Linux and macOS platforms.  The package requires \proglang{R} ($\geq$ 3.0.0) and depends on packages \pkg{MASS} (\citealp{mass2002}) and \pkg{Rcpp} ($\geq$ 0.11.5). Additionally, it imports functionality from the \pkg{CARBayesdata} (\citealp{carbayesdata}),  \pkg{coda} (\citealp{coda2006}), \pkg{dplyr} (\citealp{dplyr2015}), \pkg{gtools} (\citealp{gtools}), \pkg{leaflet} (\citealp{leaflet}),  \pkg{matrixcalc} (\citealp{matrixcalc2012}), \pkg{sp} (\citealp{bivand2013}), \pkg{spam} (\citealp{spam2010}), \pkg{spdep}, \pkg{stats}, \pkg{testthat} (\citealp{testthat}), \pkg{truncdist} (\citealp{truncdist2012}) \pkg{truncnorm} (\citealp{truncnorm2014}) and \pkg{utils} packages. Once installed it can be loaded using the command \code{library("CARBayesST")}. The packages listed above are automatically loaded for use in \pkg{CARBayesST} by the above call, but a complete spatial analysis beginning with reading in and visualising the data, creating the neighbourhood matrix $\mathbf{W}$, and plotting the results requires a number of other packages.
+\pkg{CARBayesST} can be downloaded from the Comprehensive R Archive Network (CRAN, \url{http://cran.r-project.org/}) for Windows, Linux and macOS platforms.  The package requires \proglang{R} ($\geq$ 3.0.0) and depends on packages \pkg{MASS} (\citealp{mass2002}) and \pkg{Rcpp} ($\geq$ 0.11.5). Additionally, it imports functionality from the \pkg{CARBayesdata} (\citealp{carbayesdata}),  \pkg{coda} (\citealp{coda2006}), \pkg{dplyr} (\citealp{dplyr2015}), \pkg{gtools} (\citealp{gtools}), \pkg{leaflet} (\citealp{leaflet}),  \pkg{matrixcalc} (\citealp{matrixcalc2012}), \pkg{sf} (\citealp{sf}), \pkg{spam} (\citealp{spam2010}), \pkg{spdep}, \pkg{stats}, \pkg{testthat} (\citealp{testthat}), \pkg{truncdist} (\citealp{truncdist2012}) \pkg{truncnorm} (\citealp{truncnorm2014}) and \pkg{utils} packages. Once installed it can be loaded using the command \code{library("CARBayesST")}. The packages listed above are automatically loaded for use in \pkg{CARBayesST} by the above call, but a complete spatial analysis beginning with reading in and visualising the data, creating the neighbourhood matrix $\mathbf{W}$, and plotting the results requires a number of other packages.
 
 
 \subsection{Using the software}
@@ -455,7 +468,7 @@ When a model has been fitted in \pkg{CARBayesST}, the software provides the foll
 
 
 \begin{itemize}
-\item \code{coef()} - returns the estimated (posterior median) regression coefficients. 
+\item \code{coef()} - returns the estimated (posterior mean) regression coefficients. 
 \item \code{fitted()} - returns the fitted values based on posterior means.
 \item \code{logLik()} - returns the estimated loglikelihood based on posterior means.
 \item \code{model.matrix()} - returns the design matrix of covariates.
@@ -463,17 +476,17 @@ When a model has been fitted in \pkg{CARBayesST}, the software provides the foll
 \item \code{residuals()} - returns either the ``response" (raw), or ``pearson", residuals from the model (based on posterior means).
 \end{itemize}
 
-Additionally, the \pkg{CARBayes} functions \code{summarise.samples()} and \code{summarise.lincomb()} can  be applied to \pkg{CARBayesST} models to summarise the results. The software updates the user on its progress to the \proglang{R} console, which allows the user to monitor the function's progress. However, using the \code{verbose=FALSE} option will disable this feature. Once run, each model returns a list object with the following components. 
+The software updates the user on its progress to the \proglang{R} console, which allows the user to monitor the function's progress. However, using the \code{verbose=FALSE} option will disable this feature. Once run, each model returns a list object with the following components. 
 
 
 \begin{itemize}
-\item \code{summary.results} - A summary table of selected parameters that is presented when using the \code{print()} function. The table includes the posterior median (\code{Median}) and 95$\%$ credible interval (\code{2.5\%, 97.5\%}),  the effective number of independent samples using the  \code{effectiveSize()} function from the \pkg{coda} package (\code{n.effective}), and the convergence  diagnostic proposed by \cite{geweke1992} and implemented in the \pkg{coda} package (\code{Geweke.diag}). This diagnostic takes the form of a Z-score, so that convergence is suggested by the statistic being within the range (-1.96, 1.96).
+\item \code{summary.results} - A summary table for selected parameters that is presented when using the \code{print()} function. The table includes the posterior mean (\code{Mean}) and 95$\%$ credible interval (\code{2.5\%, 97.5\%}),  the effective number of independent samples using the  \code{effectiveSize()} function from the \pkg{coda} package (\code{n.effective}), and the convergence  diagnostic proposed by \cite{geweke1992} and implemented in the \pkg{coda} package (\code{Geweke.diag}). This diagnostic takes the form of a Z-score, so that convergence is suggested by the statistic being within the range (-1.96, 1.96).
 
 \item \code{samples} - A list containing the MCMC samples from the model, where each element in the list is a matrix. The names of these matrix objects correspond to the parameters defined in Section \ref{section2} of this vignette, and each column contains the set of samples for a single parameter.  For example, for \code{ST.CARlinear()} the (\code{tau2, rho}) elements of the list have columns ordered as $(\tau^2_{int}, \tau^2_{slo})$ and $(\rho^2_{int}, \rho^2_{slo})$ respectively. Similarly, for  \code{ST.CARanova()} the (\code{tau2, rho}) elements of the list have columns ordered as $(\tau^2_{S}, \tau^2_{T}, \tau^2_{I})$ (the latter only if \code{interaction=TRUE}) and $(\rho^2_{S}, \rho^2_{T})$ respectively. Finally, each model returns samples from the posterior distribution of the fitted values for each data point (\code{fitted}), and the missing values in the response variable (\code{Y}).
 
 \item \code{fitted.values} - For the univariate models a vector of fitted values based on posterior means for each area and time period in the same order as the data $\mathbf{Y}$. For the multivariate models a matrix of fitted values where each column relates to a single outcome. 
 
-\item \code{residuals} - For the univariate models a matrix of 2 types of residuals in the same order as the response. The 2 columns of this matrix correspond to ``respons'' (raw), and ``pearson'', residuals. For the multivariate models a list of matrices corresponding to  ``response'' (raw), and ``pearson'', residuals. For each matrix each column relates to a single outcome. 
+\item \code{residuals} - For the univariate models a matrix of 2 types of residuals in the same order as the response. The 2 columns of this matrix correspond to ``response'' (raw), and ``pearson'', residuals. For the multivariate models a list of matrices corresponding to  ``response'' (raw), and ``pearson'', residuals. For each matrix each column relates to a single outcome. 
 
 \item \code{modelfit} - Model fit criteria including the Deviance Information Criterion (DIC, \citealp{spiegelhalter2002}) and its corresponding estimated effective number of parameters (p.d), the Watanabe-Akaike Information Criterion (WAIC, \citealp{watanabe2010}) and its corresponding estimated number of effective parameters (p.w), the Log Marginal Predictive Likelihood (LMPL, \citealp{congdon2005}) and the loglikelihood. The best fitting model is one that minimises the DIC and WAIC but maximises the LMPL. If the response data contains missing data, the DIC is computed based on only the observed data (see \cite{celeux2006}).
 
@@ -503,38 +516,42 @@ This example is an ecological regression problem, whose aim is to estimate the e
 
 
 \subsection{Data and exploratory analysis}
-Scotland is split into 14 regional health boards, and this study focuses on the Greater Glasgow and Clyde health board containing  the city of Glasgow and a population of around 1.2 million people. This health board is split into $K=271$ Intermediate Geographies (IG) (also known as Intermediate Zones (IZ)), which are a key geography for the distribution of small-area statistics in Scotland. The available data span $N=5$ years  between 2007 and 2011 for each of the $K=271$ IGs. The disease and covariate data are freely available from Scottish Statistics (\url{http://statistics.gov.scot/}), while the particulate matter pollution concentrations are available from the Department for the Environment, Food and Rural Affairs (DEFRA, \url{https://uk-air.defra.gov.uk/data/pcm-data}).
+Scotland is split into 14 regional health boards, and this study focuses on the Greater Glasgow and Clyde health board containing  the city of Glasgow and a population of around 1.2 million people. This health board is split into $K=271$ Intermediate Zones (IZ), which are a key geography for the distribution of small-area statistics in Scotland. The available data span $N=5$ years  between 2007 and 2011 for each of the $K=271$ IZs. The disease and covariate data are freely available from Scottish Statistics (\url{http://statistics.gov.scot/}), while the particulate matter pollution concentrations are available from the Department for the Environment, Food and Rural Affairs (DEFRA, \url{https://uk-air.defra.gov.uk/data/pcm-data}).
 
-\hspace{1cm} The disease data relate to the observed and expected numbers of respiratory related hospital admissions in each IG and year, which for the $k$th IG and $t$th year are denoted by $(Y_{kt}, e_{kt})$ respectively. Here the expected numbers of hospital admissions control for the varying population sizes and demographic structures (e.g., age and sex profile) in each IG and year, and are computed via indirect standardisation.  The Poisson  model, $Y_{kt}\sim\mbox{Poisson}(e_{kt}\theta_{kt})$ is typically used to model these data, where $\theta_{kt}$ is the risk, relative to $e_{kt}$, of disease in IG $k$ and year $t$. For example, a value of 1.2 corresponds to a 20\% increased risk of disease. Operationally, $e_{kt}$ is included as an offset term in the model on the linear predictor (natural log) scale, that is $O_{kt}=\ln(e_{kt})$ in (\ref{equation likelihood}). 
+\hspace{1cm} The disease data relate to the observed and expected numbers of respiratory related hospital admissions in each IZ and year, which for the $k$th IZ and $t$th year are denoted by $(Y_{kt}, e_{kt})$ respectively. Here the expected numbers of hospital admissions control for the varying population sizes and demographic structures (e.g., age and sex profile) in each IZ and year, and are computed via indirect standardisation.  The Poisson  model, $Y_{kt}\sim\mbox{Poisson}(e_{kt}\theta_{kt})$ is typically used to model these data, where $\theta_{kt}$ is the risk, relative to $e_{kt}$, of disease in IZ $k$ and year $t$. For example, a value of 1.2 corresponds to a 20\% increased risk of disease. Operationally, $e_{kt}$ is included as an offset term in the model on the linear predictor (natural log) scale, that is $O_{kt}=\ln(e_{kt})$ in (\ref{equation likelihood}). 
 
-\hspace{1cm} The pollution data comprise yearly average modelled concentrations of particulate matter less than 10 microns (PM$_{10}$), which are available on a 1 kilometre square grid and are produced by the numerical  model described in \cite{ricardo2015}. These 1 kilometre square estimates are spatially misaligned with the irregularly shaped polygonal IGs at which the disease  data are available, and thus simple averaging is used to produce IG level PM$_{10}$ estimates. Finally, we have 2 potential confounders to include in the model, both of which are measures of socio-economic deprivation (poverty) which is a major factor influencing population health. The first is the average property price in each IG and year (in hundreds of thousands), while the second is the proportion of the working age population who are in receipt of job seekers allowance (JSA), a benefit paid to individuals who are unemployed and seeking employment.
+\hspace{1cm} The pollution data comprise yearly average modelled concentrations of particulate matter less than 10 microns (PM$_{10}$), which are available on a 1 kilometre square grid resolution and are produced by the numerical  model described in \cite{ricardo2015}. These 1 kilometre gridded estimates are spatially misaligned with the irregularly shaped polygonal IZs at which the disease  data are available, and thus simple averaging is used to produce IZ level PM$_{10}$ estimates. Finally, we have 2 potential confounders to include in the model, both of which are measures of socio-economic deprivation (poverty) which is a major factor influencing population health. The first is the average property price in each IZ and year (in hundreds of thousands), while the second is the proportion of the working age population who are in receipt of job seekers allowance (JSA), a benefit paid to individuals who are unemployed and seeking employment.
 
-\hspace{1cm} These data are available in the \pkg{CARBayesdata} package in the object \code{pollutionhealthdata}, and the package also contains the spatial polygon information for the Greater Glasgow and Clyde health board study region in the object \code{GGHB.IG} as a \code{SpatialPolygonsDataFrame} object. These data can be loaded using the following commands.
+\hspace{1cm} These data are available in the \pkg{CARBayesdata} package in the object \code{pollutionhealthdata}, and the package also contains the spatial polygon information for the Greater Glasgow and Clyde health board study region in the object \code{GGHB.IZ} as a \code{sf} object from the \pkg{sf} package. These data can be loaded using the following commands.
 
 
 
 
 <<>>=
 library("CARBayesdata")
-library("sp")
-data("GGHB.IG")
+library("sf")
+data("GGHB.IZ")
 data("pollutionhealthdata")
 @
 
 
-The data frame \code{pollutionhealthdata} has the following structure
+These two data sets have the following structures.
 
 <<>>=
+class(GGHB.IZ)
+head(GGHB.IZ)
+class(pollutionhealthdata)
 head(pollutionhealthdata)
 @
 
-where the first column labelled \code{IG} is the set of unique identifiers for each IG, while \code{observed} and \code{expected} are respectively the observed (e.g. $Y_{kt}$) and expected (e.g. $E_{kt}$) numbers of hospital admissions due to respiratory disease. An exploratory measure of disease risk is the standardised morbidity ratio (SMR), which for the $k$th IG and $t$th year is computed as SMR$_{kt}=Y_{kt}/E_{kt}$. However, due to the natural log link function in the Poisson model, the covariates are related in the model to the natural log of the SMR. Therefore the code below adds the SMR and the natural log of the SMR to the data set using functionality of the \pkg{dplyr} package.
+The \code{GGHB.IZ} object contains a unique identifier for each IZ (\code{IZ}) and the polygon information (\code{geometry}), while \code{pollutionhealthdata} contains the data set. For the latter, the first column labelled \code{IZ} is the set of unique identifiers for each IZ, while \code{observed} and \code{expected} are respectively the observed (e.g. $Y_{kt}$) and expected (e.g. $E_{kt}$) numbers of hospital admissions due to respiratory disease. An exploratory measure of disease risk is the standardised morbidity ratio (SMR), which for the $k$th IZ and $t$th year is computed as SMR$_{kt}=Y_{kt}/E_{kt}$. However, due to the natural log link function in the Poisson model, the covariates are related in the model to the natural log of the SMR. Therefore the code below adds the SMR and the natural log of the SMR to the data set using functionality of the \pkg{dplyr} package.
 
 <<>>=
 library(dplyr)
 pollutionhealthdata <- pollutionhealthdata %>% mutate( 
           SMR = pollutionhealthdata$observed / pollutionhealthdata$expected, 
           logSMR = log(pollutionhealthdata$observed / pollutionhealthdata$expected))
+head(pollutionhealthdata)
 @
 
 
@@ -554,37 +571,37 @@ ggpairs(pollutionhealthdata, columns=c(9, 5:7))
 \end{figure} 
 
 
-The pairs plot shown in Figure \ref{pollution_scatterplot} shows respectively positive and negative relationships between the natural log of SMR and the two deprivation covariates \code{jsa} and \code{price}, in both cases suggesting that increasing levels of poverty are related to an increased risk of respiratory hospitalisation. There also appears to be a weak positive relationship between log(SMR) and PM$_{10}$, while the only relationship that exists between the covariates  is a negative non-linear one between \code{jsa} and \code{price}. Next, it is of interest to visualise the average spatial pattern in the SMR over all five years, and the data can be appropriately aggregated using the \code{summarise()} function from the \pkg{dplyr} package using the code below. The final line adds the aggregated averages to the \code{GGHB.IG} \code{SpatialPolygonsDataFrame} object.
+The pairs plot shown in Figure \ref{pollution_scatterplot} shows respectively positive and negative relationships between the natural log of SMR and the two deprivation covariates \code{jsa} and \code{price}, in both cases suggesting that increasing levels of poverty are related to an increased risk of respiratory hospitalisation. There also appears to be a weak positive relationship between log(SMR) and PM$_{10}$, while the only relationship that exists between the covariates  is a negative non-linear one between \code{jsa} and \code{price}. Next, it is of interest to visualise the average spatial pattern in the SMR over all five years, and the data can be appropriately aggregated using the \code{summarise()} function from the \pkg{dplyr} package using the code below. The final line adds the aggregated averages to the \code{GGHB.IZ} \code{sf} object.
 
 
 <<>>=
-group_IG <- group_by(pollutionhealthdata, IG)
-SMR.av <- summarise(group_IG, SMR.mean = mean(SMR))
-GGHB.IG@data$SMR <- SMR.av$SMR.mean
+group_IZ <- group_by(pollutionhealthdata, IZ)
+SMR.av <- summarise(group_IZ, SMR.mean = mean(SMR))
+GGHB.IZ$SMR <- SMR.av$SMR.mean
+head(GGHB.IZ)
 @
 
-A spatial map of the aggregated \code{SMR} variable can be overlaid on an OpenStreetMap using the functionality of the \pkg{leaflet} package. However, first the \code{GGHB.IG} object needs to have its coordinate reference system changed to longitude and latitude as this is what the \pkg{leaflet} package requires, which can be done using the following \proglang{R} code.
+A spatial map of the aggregated \code{SMR} variable can be overlaid on an OpenStreetMap using the functionality of the \pkg{leaflet} package. However, first the \code{GGHB.IZ} object needs to have its coordinate reference system changed to longitude and latitude as this is what the \pkg{leaflet} package requires, which can be done using the following \proglang{R} code.
 
 
 
 <<>>=
-library(rgdal)
-GGHB.IG <- spTransform(GGHB.IG, CRS("+proj=longlat +datum=WGS84 +no_defs"))
+GGHB.IZ <- st_transform(x=GGHB.IZ, crs='+proj=longlat +datum=WGS84 +no_defs')
 @
 
 Then a map of \code{SMR} can be drawn using the following code.
 
 <<>>=
 library(leaflet)
-colours <- colorNumeric(palette = "YlOrRd", domain = GGHB.IG@data$SMR)
-map1 <- leaflet(data=GGHB.IG) %>% 
+colours <- colorNumeric(palette = "YlOrRd", domain = GGHB.IZ$SMR)
+leaflet(data=GGHB.IZ) %>% 
     addTiles() %>% 
-    addPolygons(fillColor = ~colours(SMR), weight=1, color="",
+    addPolygons(fillColor = ~colours(GGHB.IZ$SMR), 
+                color="grey", weight=1, 
                 fillOpacity = 0.7) %>%
-    addLegend(pal = colours, values = GGHB.IG@data$SMR, opacity = 1, 
-                title="SMR") %>%
+    addLegend(pal = colours, values = GGHB.IZ$SMR, 
+              opacity = 1, title="SMR") %>%
     addScaleBar(position="bottomleft")
-map1
 @
 
 
@@ -592,16 +609,16 @@ map1
 
 \begin{figure}
 \centering 
-\scalebox{0.8}{\includegraphics{SMRmap.pdf}}
+\scalebox{0.8}{\includegraphics{SMRmap.png}}
 \caption{Map showing the average SMR over all five years from 2007 to 2011.\label{smr_map}}
 \end{figure} 
 
 
-The map is shown in Figure \ref{smr_map}, where the yellow shaded areas are low risk (SMR$<$1) while the red areas exhibit elevated risks (SMR$>$1). The map shows that the main high-risk areas are in the east-end of Glasgow in the east of the study region, and the Greenock area in the far west of the region on the lower bank of the river Clyde. The spatio-temporal models we fit to these data require the neighbourhood matrix $\mathbf{W}$ and a \code{listw} object variant of the same spatial information, the latter being used in a hypothesis test for spatial autocorrelation. Both of these quantities can be computed from the  \code{SpatialPolygonsDataFrame} object using functionality from the \pkg{spdep} package as follows.
+The map is shown in Figure \ref{smr_map}, where the yellow shaded areas are low risk (SMR$<$1) while the red areas exhibit elevated risks (SMR$>$1). The map shows that the main high-risk areas are in the east-end of Glasgow in the east of the study region, and the Greenock area in the far west of the region on the lower bank of the river Clyde. The spatio-temporal models we fit to these data require the neighbourhood matrix $\mathbf{W}$ and a \code{listw} object variant of the same spatial information, the latter being used in a hypothesis test for spatial autocorrelation. Both of these quantities can be computed from the  \code{sf} object \code{GGHB.IZ} using functionality from the \pkg{spdep} package as follows.
 
 <<>>=
 library("spdep")
-W.nb <- poly2nb(GGHB.IG, row.names = SMR.av$IG)
+W.nb <- poly2nb(GGHB.IZ, row.names = GGHB.IZ$IZ)
 W.list <- nb2listw(W.nb, style = "B")
 W <- nb2mat(W.nb, style = "B")
 @
@@ -609,7 +626,7 @@ W <- nb2mat(W.nb, style = "B")
 Here \code{W} is a binary $K\times K$ neighbourhood matrix computed based on sharing a common border, and \code{W.list} is the \code{listw} object variant of this spatial information.
 
 
-\subsection{Assessing the presence of residua spatial autocorrelation}
+\subsection{Assessing the presence of residual spatial autocorrelation}
 The spatio-temporal models in \pkg{CARBayesST} allow for any remaining spatio-temporal autocorrelation in the disease data after the effects of the known covariates have been accounted for. Therefore, we assess the presence of spatial autocorrelation in the residuals from a simple overdispersed Poisson log-linear model that incorporates the covariate effects. This model is fitted using the code:
 
 <<>>=
@@ -627,7 +644,7 @@ The results show significant effects of all three covariates on disease risk, as
 moran.mc(x = resid.glm[1:271], listw = W.list, nsim = 10000)
 @
 
-The estimated Moran's I statistic is 0.10358 and the p-value is less than 0.05, suggesting strong evidence of unexplained spatial autocorrelation in the residuals from 2007 after accounting for the covariate effects. Similar results were obtained for the other years and are not shown for brevity. We note that residual temporal autocorrelation could be assessed similarly for each IG, for example by computing the lag-1 autocorrelation coefficient, but with only 5 time points the resulting estimates would not be reliable. These results show that the assumption of independence is not valid for these data, and that spatio-temporal autocorrelation should be allowed for when estimating the covariate effects. 
+The estimated Moran's I statistic is 0.10358 and the p-value is less than 0.05, suggesting strong evidence of unexplained spatial autocorrelation in the residuals from 2007 after accounting for the covariate effects. Similar results were obtained for the other years and are not shown for brevity. We note that residual temporal autocorrelation could be assessed similarly for each IZ, for example by computing the lag-1 autocorrelation coefficient, but with only 5 time points the resulting estimates would not be reliable. These results show that the assumption of independence is not valid for these data, and that spatio-temporal autocorrelation should be allowed for when estimating the covariate effects. 
 
 
 \subsection[Spatio-temporal modelling with CARBayesST]{Spatio-temporal modelling with \pkg{CARBayesST}}
@@ -668,7 +685,7 @@ Regression equation - observed ~ offset(log(expected)) + jsa + price + pm10
 ############
 Posterior quantities for selected parameters and DIC
 
-             Median    2.5%   97.5% n.effective Geweke.diag
+             Mean    2.5%    97.5% n.effective  Geweke.diag
 (Intercept) -0.6715 -0.8478 -0.4923       668.8        -1.1
 jsa          0.0646  0.0547  0.0753       141.5        -1.7
 price       -0.1961 -0.2389 -0.1525      1334.9         1.4
@@ -677,10 +694,11 @@ tau2         0.0584  0.0486  0.0686      1766.7        -0.8
 rho.S        0.5536  0.3970  0.7133      1761.7        -1.1
 rho.T        0.7584  0.6989  0.8174      1995.3        -0.8
 
-DIC =  10400.35       p.d =  773.3225       LMPL =  -5355.437 \end{CodeOutput}
+DIC =  10400.35       p.d =  773.3225       LMPL =  -5355.437 
+\end{CodeOutput}
 
 
-The output from the \code{print()} function is split into two sections, the first part (\code{Model fitted}) describes the model that was fitted, while the second part (\code{Results}) presents  a summary of the numerical results. This summary includes parameter estimates (column \code{Median}), 95\% credible intervals (the columns headed \code{2.5\%} and \code{97.5\%}) and convergence diagnostics (columns \code{n.effective} and \code{Geweke.diag}) for certain parameters, as well as overall model fit measures such as the DIC. The model object \code{chain1} is a list, and details of its elements are described in Section \ref{section3} of this paper. A list object containing the MCMC samples for each individual parameter and the fitted values are stored in \code{chain1$samples}, and each element of this list corresponds to a different group of parameters and is stored as a  \code{mcmc} object from the \pkg{coda} package.  Applying the \code{summary()} function to this object yields:
+The output from the \code{print()} function is split into two sections, the first part (\code{Model fitted}) describes the model that was fitted, while the second part (\code{Results}) presents  a summary of the numerical results. This summary includes parameter estimates (column \code{Mean}), 95\% credible intervals (the columns headed \code{2.5\%} and \code{97.5\%}) and convergence diagnostics (columns \code{n.effective} and \code{Geweke.diag}) for certain parameters, as well as overall model fit measures such as the DIC. The model object \code{chain1} is a list, and details of its elements are described in Section \ref{section3} of this vignette. A list object containing the MCMC samples for each individual parameter and the fitted values are stored in \code{chain1$samples}, and each element of this list corresponds to a different group of parameters and is stored as a  \code{mcmc} object from the \pkg{coda} package.  Applying the \code{summary()} function to this object yields:
 
 
 
@@ -703,7 +721,7 @@ Y            1 mcmc  logical
 
 
 
-Here the \code{Y} object is \code{NA} as there are no missing $Y_{kt}$ observations in this data set. If there had been say $m$ missing values, then the \code{Y} component of the list would have contained $m$ columns, with each one containing posterior predictive samples for one of the missing observations. Before making inference from the model you have to ensure the Markov chains appear to have converged, and one single chain diagnostic is that proposed by Geweke and given in the model summary above (\code{Geweke.diag}). Another method is a traceplot comparing the results from the multiple chains, which for the regression parameters (\code{beta}) can be produced as follows using functionality from the \pkg{coda} package.
+Here the \code{Y} object is \code{NA} as there are no missing $\{Y_{kt}\}$ observations in this data set. If there had been say $m$ missing values, then the \code{Y} component of the list would have contained $m$ columns, with each one containing posterior predictive samples for one of the missing observations. Before making inference from the model you have to ensure the Markov chains appear to have converged, and a single chain diagnostic is the Z-score proposed by Geweke and given in the model summary above (\code{Geweke.diag}), where convergence is suggested if the Z-score lies within $(-1.96, 1.96)$. Another method is a traceplot comparing the results from the multiple chains, which for the regression parameters (\code{beta}) can be produced as follows using functionality from the \pkg{coda} package.
 
 \begin{CodeInput}
 R>  library(coda)
@@ -743,24 +761,25 @@ Multivariate psrf
 1.02
 \end{CodeOutput}
 
-which again suggests that the 3 chains are sufficient for making inference. The key interest in this analysis is the effects of the covariates on disease risk, which for Poisson models are typically presented as relative risks. The relative risk for an $\epsilon$ unit increase in a covariate with regression parameter $\beta_s$ is given by the transformation $\exp(\epsilon\beta_s)$, and a relative risk of 1.02 corresponds to a 2\% increased risk if the covariate increased by $\epsilon$. The code below computes the posterior median and 95\% credible intervals  for the relative risks associated with a one unit increase in each covariate, which are all realistic increases given the variation observed in the data in Figure \ref{pollution_scatterplot}.
+which again suggests that the 3 chains are sufficient for making inference. The key interest in this analysis is the effects of the covariates on disease risk, which for Poisson models are typically presented as relative risks. The relative risk for an $\epsilon$ unit increase in a covariate with regression parameter $\beta_s$ is given by the transformation $\exp(\epsilon\beta_s)$, and a relative risk of 1.02 corresponds to a 2\% increased risk if the covariate increased by $\epsilon$. The code below computes the posterior mean and 95\% credible intervals  for the relative risks associated with a one unit increase in each covariate, which are all realistic increases given the variation observed in the data in Figure \ref{pollution_scatterplot}.
 
 \begin{CodeInput}
 R>  beta.samples <- rbind(chain1$samples$beta[ ,-1], chain2$samples$beta[ ,-1], 
 +           chain3$samples$beta[ ,-1])
-R>  t(round(apply(exp(beta.samples), 2, quantile, c(0.5, 0.025, 0.975)), 3))
+R>  t(round(rbind(apply(exp(beta.samples), 2, mean),
+            apply(exp(beta.samples), 2, quantile, c(0.025, 0.975))), 3))
 \end{CodeInput}
 
 
 \begin{CodeOutput}
-      50%  2.5% 97.5%
+            2.5% 97.5%
 [1,] 1.067 1.056 1.078
 [2,] 0.822 0.789 0.859
 [3,] 1.036 1.023 1.048
 \end{CodeOutput}
 
 
-The output above shows that the posterior median and 95\% credible interval for the relative risk of a 1$\mu gm^{-3}$  increase in PM$_{10}$ is 1.036 (1.023, 1.048), suggesting that such an increase corresponds to 3.5\% additional hospital admissions. The corresponding relative risk for a one percent increase in JSA is 1.067 (1.056, 1.078), while for a one hundred thousand pounds increase in  property price (the units for the  property price data were in hundreds of thousands) the risk is 0.822 (0.789, 0.859). Thus, we find that increased air pollution concentrations are related, at this ecological level, to increased respiratory hospitalisation, while decreased socio-economic deprivation, as measured by both property price and JSA, is related to decreased risks of hospital admission.
+The output above shows that the posterior mean and 95\% credible interval for the relative risk of a 1$\mu gm^{-3}$  increase in PM$_{10}$ is 1.036 (1.023, 1.048), suggesting that such an increase corresponds to 3.5\% additional hospital admissions. The corresponding relative risk for a one percent increase in JSA is 1.067 (1.056, 1.078), while for a one hundred thousand pounds increase in  property price (the units for the  property price data were in hundreds of thousands) the risk is 0.822 (0.789, 0.859). Thus, we find that increased air pollution concentrations are related, at this ecological level, to increased respiratory hospitalisation, while decreased socio-economic deprivation, as measured by both property price and JSA, is related to decreased risks of hospital admission.
 
 
 
@@ -773,20 +792,20 @@ The output above shows that the posterior median and 95\% credible interval for 
 This second example focuses on the state of the housing market, specifically property sales, and aims to quantify its changing trend over time in an era that encompassed the global financial crisis that began in late 2007. 
 
 \subsection{Data and exploratory analysis}
-The study region is the same as for the first example, namely the set of $K=271$ intermediate geographies that make up the Greater Glasgow and Clyde health board. The data also come from the same source (Scottish Statistics, \url{http://statistics.gov.scot/}), and include yearly observations of the number of property sales $Y_{kt}$ in each IG (indexed by $k$) and year (indexed by $t$). Additionally,  we have the total number of properties $n_{kt}$ in each IG and year that will be used in the model as the offset term. We use the following Poisson log-linear model for these data, $Y_{kt}\sim\mbox{Poisson}(n_{kt}\theta_{kt})$, where $\theta_{kt}$ is the rate of property sales as a proportion of the total number of properties. We note that we have not used a binomial model here as a single property could sell more than once in a year, meaning that each property does not constitute a Bernoulli trial. Thus $\theta_{kt}$ is not strictly the proportion of properties that sell in a year, but is on approximately the same scale for interpretation purposes. These data are available in the \pkg{CARBayesdata} package in the object \code{salesdata}, as is the spatial polygon information for the Greater Glasgow and Clyde health board study region (in the object \code{GGHB.IG}). These data can be loaded using the following commands.
+The study region is the same as for the first example, namely the set of $K=271$ Intermediate Zones that make up the Greater Glasgow and Clyde health board. The data also come from the same source (Scottish Statistics, \url{http://statistics.gov.scot/}), and include yearly observations of the number of property sales $Y_{kt}$ in each IZ (indexed by $k$) and year (indexed by $t$). Additionally,  we have the total number of properties $n_{kt}$ in each IZ and year that will be used in the model as the offset term. We use the following Poisson log-linear model for these data, $Y_{kt}\sim\mbox{Poisson}(n_{kt}\theta_{kt})$, where $\theta_{kt}$ is the rate of property sales as a proportion of the total number of properties. We note that we have not used a binomial model here as a single property could sell more than once in a year, meaning that each property does not constitute a Bernoulli trial. Thus $\theta_{kt}$ is not strictly the proportion of properties that sell in a year, but is on approximately the same scale for interpretation purposes. These data are available in the \pkg{CARBayesdata} package in the object \code{salesdata}, as is the spatial polygon information for the Greater Glasgow and Clyde health board study region (in the object \code{GGHB.IZ}). These data can be loaded using the following commands.
 
 
 
 <<>>=
 library("CARBayesdata")
-library("sp")
-data("GGHB.IG")
+library("sf")
+data("GGHB.IZ")
 data("salesdata")
 head(salesdata)
 @
 
 
-The \code{data.frame} \code{salesdata} contains 4 columns, the intermediate geography code (\code{IG}), the year the data relate to (\code{year}), the number of property sales (\code{sales}, $Y_{kt}$) and the total number of properties (\code{stock}, $n_{kt}$). We visualise the temporal trend in the raw rate of property sales as a proportion of the total number of properties using boxplots via the \pkg{ggplot2} package as shown below.
+The \code{data.frame} \code{salesdata} contains 4 columns, the Intermediate Zone code (\code{IZ}), the year the data relate to (\code{year}), the number of property sales (\code{sales}, $Y_{kt}$) and the total number of properties (\code{stock}, $n_{kt}$). We visualise the temporal trend in the raw rate of property sales as a proportion of the total number of properties using boxplots via the \pkg{ggplot2} package as shown below.
 
 <<>>=
 salesdata <- salesdata %>% mutate(salesprop = salesdata$sales / salesdata$stock)
@@ -810,25 +829,25 @@ This produces the boxplot shown in Figure \ref{salesboxplot}, where the global f
 
 <<>>=
 library(dplyr)
-group_IG <- group_by(salesdata, IG)
-salesprop <- summarise(group_IG, salesproprtion.mean = mean(salesprop))
-GGHB.IG@data$sales <- salesprop$salesproprtion.mean
+group_IZ <- group_by(salesdata, IZ)
+salesprop <- summarise(group_IZ, salesproprtion.mean = mean(salesprop))
+GGHB.IZ$sales <- salesprop$salesproprtion.mean
+head(GGHB.IZ)
 @
 
-This variable can be mapped using the code below, and the result is displayed in Figure \ref{salesmap}.
+This variable can be mapped using the code below, which first changes the coordinate reference system to longitude and latitude, and the result is displayed in Figure \ref{salesmap}.
 
 <<>>=
-library(rgdal)
-GGHB.IG <- spTransform(GGHB.IG, CRS("+proj=longlat +datum=WGS84 +no_defs"))
+GGHB.IZ <- st_transform(x=GGHB.IZ, crs='+proj=longlat +datum=WGS84 +no_defs')
 
 library(leaflet)
-colours <- colorNumeric(palette = "YlOrRd", domain = GGHB.IG@data$sales)
-map1 <- leaflet(data=GGHB.IG) %>% 
+colours <- colorNumeric(palette = "YlOrRd", domain = GGHB.IZ$sales)
+map1 <- leaflet(data=GGHB.IZ) %>% 
     addTiles() %>% 
-    addPolygons(fillColor = ~colours(sales), color="", weight=1, 
+    addPolygons(fillColor = ~colours(sales), color="grey", weight=1, 
                 fillOpacity = 0.7) %>%
-    addLegend(pal = colours, values = GGHB.IG@data$sales, opacity = 1, 
-                title="Sales") %>%
+    addLegend(pal = colours, values = GGHB.IZ$sales, opacity = 1, 
+              title="Sales") %>%
     addScaleBar(position="bottomleft")
 map1
 @
@@ -837,7 +856,7 @@ map1
 
 \begin{figure}
 \centering 
-\scalebox{0.8}{\includegraphics{salesmap.pdf}}
+\scalebox{0.8}{\includegraphics{salesmap.png}}
 \caption{Map showing the average (between 2003 to 2013) raw rate of property sales as a proportion of the total number of properties.\label{salesmap}}
 \end{figure} 
 
@@ -850,7 +869,7 @@ Before fitting the model we need to create the neighbourhood matrix using the fo
 
 <<>>=
 library("spdep")
-W.nb <- poly2nb(GGHB.IG, row.names = salesprop$salesproprtion.mean)
+W.nb <- poly2nb(GGHB.IZ, row.names = GGHB.IZ$IZ)
 W <- nb2mat(W.nb, style = "B")
 @
 
@@ -865,28 +884,28 @@ R>  chain1 <- ST.CARsepspatial(formula = formula, family = "poisson",
 +           thin = 100)
 \end{CodeInput}
 
-Convergence of the  Markov chain can be assessed using traceplots and the Geweke diagnostic outlined in the previous section, which are not shown for brevity. Also not shown for brevity is a summary of the fitted model, which as before can be obtained using the \code{print()} function. The model represents the estimated rate of property sales by
+Convergence of the  Markov chain can be assessed using traceplots and the Geweke diagnostic outlined in the previous section, which are not shown for this example for brevity. Also not shown for brevity is a summary of the fitted model, which as before can be obtained using the \code{print()} function. The model represents the estimated rate of property sales by
 
 $$\theta_{kt}~=~\exp(\beta_1 + \phi_{kt} + \delta_t),$$
 
-which is the sum of an overall intercept term $\beta_1$, a space-time effect $\phi_{kt}$ with a time period specific variance, and a region-wide temporal trend $\delta_t$. The mean and standard deviation of $\{\theta_{kt}\}$ over space for each year is computed by the following code, which produces the posterior median and a 95\% credible interval for each quantity for each year.
+which is the sum of an overall intercept term $\beta_1$, a space-time effect $\phi_{kt}$ with a time period specific variance, and a region-wide temporal trend $\delta_t$. The mean and standard deviation of $\{\theta_{kt}\}$ over space for each year is computed by the following code, which produces the posterior mean and a 95\% credible interval for each quantity for each year.
 
 
 \begin{CodeInput}
-R>  trend.median <- data.frame(Year=2003:2013, array(NA, c(11, 3)))
-R>  colnames(trend.median) <- c("Year", "Median", "LCI", "UCI")
+R>  trend.mean <- data.frame(Year=2003:2013, array(NA, c(11, 3)))
+R>  colnames(trend.mean) <- c("Year", "Mean", "LCI", "UCI")
 R>  trend.sd <- data.frame(Year=2003:2013, array(NA, c(11, 3)))
-R>  colnames(trend.sd) <- c("Year", "Median", "LCI", "UCI")
+R>  colnames(trend.sd) <- c("Year", "Mean", "LCI", "UCI")
 R>      for(i in 1:11)
 +       {
 +       posterior <- exp(chain1$samples$phi[ , ((i-1) * 271 + 1):(i * 271)] + 
 +                 matrix(rep(chain1$samples$beta + chain1$samples$delta[ , i], 271), 
 +                 ncol = 271, byrow = FALSE))
-+       trend.median[i, 2:4] <- quantile(apply(posterior, 1, mean), 
-+                 c(0.5, 0.025, 0.975))
-+       trend.sd[i, 2:4] <- quantile(apply(posterior, 1, sd), 
-+                 c(0.5, 0.025, 0.975))
-+       }
++       trend.mean[i, 2:4] <- c(mean(apply(posterior, 1, mean)), 
++                            quantile(apply(posterior, 1, mean), c(0.025, 0.975)))
++       trend.sd[i, 2:4] <- c(mean(apply(posterior, 1, sd)), 
++                            quantile(apply(posterior, 1, sd), c(0.025, 0.975)))
++    }
 \end{CodeInput}
 
 The temporal trends in the average rate of property sales and its level of spatial variation can be plotted by the following code, and the result is displayed in Figure \ref{salestrend}.
@@ -894,16 +913,16 @@ The temporal trends in the average rate of property sales and its level of spati
 
 
 \begin{CodeInput}
-R>  medianplot <- ggplot(aes(x = factor(year), y = salesprop), 
+R>  meanplot <- ggplot(aes(x = factor(year), y = salesprop), 
 +             data=salesdata) +
 +         geom_jitter(color="blue") + 
 +         scale_x_discrete(name = "Year") +
 +         scale_y_continuous(name = "Average sales rate") + 
-+         geom_line(data=trend.median, mapping=aes(x=factor(Year), y=Median, 
++         geom_line(data=trend.mean, mapping=aes(x=factor(Year), y=Mean, 
 +             group=1), colour="red", lwd=1) + 
-+         geom_line(data=trend.median, mapping=aes(x=factor(Year), y=LCI, 
++         geom_line(data=trend.mean, mapping=aes(x=factor(Year), y=LCI, 
 +             group=1)) + 
-+         geom_line(data=trend.median, mapping=aes(x=factor(Year), y=UCI, 
++         geom_line(data=trend.mean, mapping=aes(x=factor(Year), y=UCI, 
 +             group=1)) + 
 +         ggtitle("(a) - Average sales rate") +
 +         theme(text=element_text(size=16), plot.title=element_text(size=18, 
@@ -912,7 +931,7 @@ R>  medianplot <- ggplot(aes(x = factor(year), y = salesprop),
 R>  sdplot <- ggplot() +
 +         scale_x_discrete(name = "Year") +
 +         scale_y_continuous(name = "Spatial standard deviation") + 
-+         geom_line(data=trend.sd, mapping=aes(x=factor(Year), y=Median, 
++         geom_line(data=trend.sd, mapping=aes(x=factor(Year), y=Mean, 
 +             group=1), colour="red", lwd=1) + 
 +         geom_line(data=trend.sd, mapping=aes(x=factor(Year), y=LCI, 
 +             group=1)) + 
@@ -923,7 +942,7 @@ R>  sdplot <- ggplot() +
 +             face="bold")) 
 
 R>  library(gridExtra)
-R>  grid.arrange(medianplot, sdplot, nrow=2, ncol=1)
+R>  grid.arrange(meanplot, sdplot, nrow=2, ncol=1)
 \end{CodeInput}
 
 
@@ -931,10 +950,10 @@ R>  grid.arrange(medianplot, sdplot, nrow=2, ncol=1)
 \begin{figure}
 \centering 
 \scalebox{1.1}{\includegraphics{salestrend.png}}
-\caption{Posterior median (red) and 95\% credible interval (black) for the temporal trend in: (a) region-wide average property sales rates; and (b) spatial standard deviation in property sales rates. In panel (a) the blue dots are the raw sales proportions for each area and year (jittered in the x direction to improve the presentation).\label{salestrend}}
+\caption{Posterior mean (red) and 95\% credible interval (black) for the temporal trend in: (a) region-wide average property sales rates; and (b) spatial standard deviation in property sales rates. In panel (a) the blue dots are the raw sales proportions for each area and year (jittered in the x direction to improve the presentation).\label{salestrend}}
 \end{figure} 
 
-The figure shows that both the region-wide average (panel (a)) and the level of spatial variation (as measured by the spatial standard deviation, panel (b)) in the rates of property sales show similar underlying trends, with maximum values just before the global financial crisis in 2007, and then  decreases afterwards. This provides some empirical evidence that the global financial crisis negatively affected the housing market in Greater Glasgow, with average sales rates dropping from around 5.0\% (0.05) in 2007 to 3\% (0.03) in 2009. The spatial standard deviation also dropped from 0.045 to 0.01 over the same three-year period, suggesting that the global financial crisis had the effect of reducing the disparity in sales rates in different regions of Greater Glasgow.
+The figure shows that both the region-wide average (panel (a)) and the level of spatial variation (as measured by the spatial standard deviation, panel (b)) in the rates of property sales show similar underlying trends, with maximum values just before the global financial crisis in 2007, and then  decreases afterwards. This provides some empirical evidence that the global financial crisis negatively affected the housing market in Greater Glasgow, with average sales rates dropping from around 5.0\% (0.05) in 2007 to 3\% (0.03) in 2009. The spatial standard deviation also dropped from 0.022 to 0.01 over the same three-year period, suggesting that the global financial crisis had the effect of reducing the disparity in sales rates in different regions of Greater Glasgow.
 
 
 

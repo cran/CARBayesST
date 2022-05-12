@@ -1,4 +1,4 @@
-binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, rho = NULL, epsilon = 0, MALA=FALSE, verbose = TRUE)
+binomial.CARadaptive <- function(formula, data = NULL, trials, W, burnin, n.sample, thin = 1, prior.mean.beta = NULL, prior.var.beta = NULL, prior.tau2 = NULL, rho = NULL, epsilon = 0, MALA=TRUE, verbose = TRUE)
     { 
 #### Verbose
     a <- common.verbose(verbose)  
@@ -504,16 +504,16 @@ samples.beta.orig <- common.betatransform(samples.beta, X.indicator, X.mean, X.s
   
   #### Create a summary object
   samples.beta.orig       <- mcmc(samples.beta.orig)
-  summary.beta            <- t(apply(samples.beta.orig, 2, quantile, c(0.5, 0.025, 0.975))) 
+  summary.beta <- t(rbind(apply(samples.beta.orig, 2, mean), apply(samples.beta.orig, 2, quantile, c(0.025, 0.975)))) 
   summary.beta            <- cbind(summary.beta, rep(n.save, p), rep(accept.beta,p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
   rownames(summary.beta)  <- colnames(X)
-  colnames(summary.beta)  <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+  colnames(summary.beta)  <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
   
   summary.hyper           <- array(NA, c(4, 7))     
-  summary.hyper[1,1:3]    <- quantile(samples.tau2, c(0.5, 0.025, 0.975))
-  summary.hyper[2,1:3]    <- quantile(samples.rho, c(0.5, 0.025, 0.975))
-  summary.hyper[3,1:3]    <- quantile(samples.alpha, c(0.5, 0.025, 0.975))
-  summary.hyper[4,1:3]    <- quantile(samples.vtau2, c(0.5, 0.025, 0.975))
+  summary.hyper[1,1:3]    <- c(mean(samples.tau2), quantile(samples.tau2, c(0.025, 0.975)))
+  summary.hyper[2,1:3]    <- c(mean(samples.rho), quantile(samples.rho, c(0.025, 0.975)))
+  summary.hyper[3,1:3]    <- c(mean(samples.alpha), quantile(samples.alpha, c(0.025, 0.975)))
+  summary.hyper[4,1:3]    <- c(mean(samples.vtau2), quantile(samples.vtau2, c(0.025, 0.975)))
   rownames(summary.hyper) <- c("tau2", "rho.S", "rho.T", "tau2.w")    
   summary.hyper[1, 4:7]   <- c(n.save, 100, effectiveSize(mcmc(samples.tau2)), geweke.diag(mcmc(samples.tau2))$z)     
   summary.hyper[2, 4:7]   <- c(n.save, accept.rho, effectiveSize(mcmc(samples.rho)), geweke.diag(mcmc(samples.rho))$z)   

@@ -26,7 +26,7 @@ Bayesian setting using Markov chain Monte Carlo (MCMC) simulation.
 \usage{
 ST.CARanova(formula, family, data=NULL,  trials=NULL, W, interaction=TRUE, burnin, 
 n.sample, thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, 
-prior.tau2=NULL, rho.S=NULL, rho.T=NULL, MALA=FALSE, verbose=TRUE)
+prior.tau2=NULL, rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -79,7 +79,7 @@ assumed). Defaults to a vector of zeros.
 }
 \item{prior.var.beta}{
 A vector of prior variances for the regression parameters beta (Gaussian priors 
-are assumed). Defaults to a vector with values 100000.
+are assumed). Defaults to a vector with values 100,000.
 }   
 \item{prior.nu2}{
 The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
@@ -101,7 +101,7 @@ estimated in the model.
 }
 \item{MALA}{
 Logical, should the function use Metropolis adjusted Langevin algorithm (MALA)
-updates (TRUE) or simple random walk (FALSE, default) updates for the regression 
+updates (TRUE, default) or simple random walk (FALSE) updates for the regression 
 parameters. Not applicable if family="gaussian".    
 }
 \item{verbose}{

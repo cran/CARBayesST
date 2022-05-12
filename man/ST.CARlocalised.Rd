@@ -26,7 +26,7 @@ Markov chain Monte Carlo (MCMC) simulation.
 \usage{
 ST.CARlocalised(formula, family, data=NULL,  G, trials=NULL, W, burnin, n.sample, 
 thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.delta=NULL, 
-prior.tau2=NULL, MALA=FALSE, verbose=TRUE)
+prior.tau2=NULL, MALA=TRUE, verbose=TRUE)
 }
 
 
@@ -78,7 +78,7 @@ assumed). Defaults to a vector of zeros.
 }
 \item{prior.var.beta}{
 A vector of prior variances for the regression parameters beta (Gaussian priors 
-are assumed). Defaults to a vector with values 100000.
+are assumed). Defaults to a vector with values 100,000.
 }   
 \item{prior.delta}{
 The prior maximum M, in a Uniform(0,M) prior, for the intercept process smoothing 
@@ -90,7 +90,7 @@ prior for tau2. Defaults to c(1, 0.01).
 }
 \item{MALA}{
 Logical, should the function use Metropolis adjusted Langevin algorithm (MALA)
-updates (TRUE) or simple random walk (FALSE, default) updates for the regression 
+updates (TRUE, default) or simple random walk (FALSE) updates for the regression 
 parameters. Not applicable if family="gaussian".    
 }
 \item{verbose}{

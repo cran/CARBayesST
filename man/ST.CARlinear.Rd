@@ -24,7 +24,7 @@ simulation.
 ST.CARlinear(formula, family, data=NULL,  trials=NULL, W, burnin, n.sample, thin=1, 
 prior.mean.beta=NULL, prior.var.beta=NULL, prior.mean.alpha=NULL, 
 prior.var.alpha=NULL, prior.nu2=NULL, prior.tau2=NULL, rho.slo=NULL, rho.int=NULL, 
-MALA=FALSE, verbose=TRUE)
+MALA=TRUE, verbose=TRUE)
 }
 
 
@@ -74,7 +74,7 @@ assumed). Defaults to a vector of zeros.
 }
 \item{prior.var.beta}{
 A vector of prior variances for the regression parameters beta (Gaussian priors 
-are assumed). Defaults to a vector with values 100000.
+are assumed). Defaults to a vector with values 100,000.
 }  
 \item{prior.mean.alpha}{
 The prior mean for the average slope of the linear time trend alpha (a Gaussian prior
@@ -82,7 +82,7 @@ is assumed). Defaults to  zero.
 }
 \item{prior.var.alpha}{
 The prior variance for the average slope of the linear time trend alpha (a Gaussian 
-prior is assumed). Defaults to 100000.
+prior is assumed). Defaults to 100,000.
 }  
 \item{prior.nu2}{
 The prior shape and scale in the form of c(shape, scale) for an Inverse-Gamma(shape, scale) 
@@ -104,7 +104,7 @@ estimated. If this arugment is NULL then rho.int is estimated in the model.
 }
 \item{MALA}{
 Logical, should the function use Metropolis adjusted Langevin algorithm (MALA)
-updates (TRUE) or simple random walk (FALSE, default) updates for the regression 
+updates (TRUE, default) or simple random walk (FALSE) updates for the regression 
 parameters. Not applicable if family="gaussian".    
 }
 \item{verbose}{

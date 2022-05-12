@@ -1,4 +1,4 @@
-binomial.CARsepspatial <- function(formula, data=NULL, trials, W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, rho.S=NULL, rho.T=NULL, MALA=FALSE, verbose=TRUE)
+binomial.CARsepspatial <- function(formula, data=NULL, trials, W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.tau2=NULL, rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 {
   ##############################################
   #### Format the arguments and check for errors
@@ -462,22 +462,22 @@ residuals <- data.frame(response=response.residuals, pearson=pearson.residuals)
   
   #### Create a summary object
   samples.beta.orig <- mcmc(samples.beta.orig)
-  summary.beta <- t(apply(samples.beta.orig, 2, quantile, c(0.5, 0.025, 0.975))) 
+  summary.beta <- t(rbind(apply(samples.beta.orig, 2, mean), apply(samples.beta.orig, 2, quantile, c(0.025, 0.975)))) 
   summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.beta,p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
   rownames(summary.beta) <- colnames(X)
-  colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+  colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
   
   summary.hyper <- array(NA, c(3 + N, 7))    
   for (tt in  1:N) {
-    summary.hyper[tt,1:3] <- quantile(samples.tau2[, tt], c(0.5, 0.025, 0.975))
+    summary.hyper[tt,1:3] <- c(mean(samples.tau2[, tt]), quantile(samples.tau2[, tt], c(0.025, 0.975)))
     summary.hyper[tt, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.tau2[, tt])), geweke.diag(mcmc(samples.tau2[, tt]))$z) 
   }
-  summary.hyper[N+1,1:3] <- quantile(samples.sig2, c(0.5, 0.025, 0.975))
+  summary.hyper[N+1,1:3] <- c(mean(samples.sig2), quantile(samples.sig2, c(0.025, 0.975)))
   summary.hyper[N+1, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.sig2)), geweke.diag(mcmc(samples.sig2))$z)  
   
   if(!fix.rho.S)
   {
-    summary.hyper[N+2, 1:3] <- quantile(samples.rho, c(0.5, 0.025, 0.975))
+    summary.hyper[N+2, 1:3] <- c(mean(samples.rho), quantile(samples.rho, c(0.025, 0.975)))
     summary.hyper[N+2, 4:7] <- c(n.keep, accept.rho, effectiveSize(samples.rho), geweke.diag(samples.rho)$z)
   }else
   {
@@ -487,7 +487,7 @@ residuals <- data.frame(response=response.residuals, pearson=pearson.residuals)
   
   if(!fix.rho.T)
   {
-    summary.hyper[N+3, 1:3] <- quantile(samples.lambda, c(0.5, 0.025, 0.975))
+    summary.hyper[N+3, 1:3] <- c(mean(samples.lambda), quantile(samples.lambda, c(0.025, 0.975)))
     summary.hyper[N+3, 4:7] <- c(n.keep, accept.lambda, effectiveSize(samples.lambda), geweke.diag(samples.lambda)$z)
   }else
   {

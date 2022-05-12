@@ -1,4 +1,4 @@
-binomial.MVCARar2 <- function(formula, data=NULL,  trials, W, burnin, n.sample, thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.Sigma.df=NULL, prior.Sigma.scale=NULL, rho.S=NULL, rho.T=NULL, MALA=FALSE, verbose=TRUE)
+binomial.MVCARar2 <- function(formula, data=NULL,  trials, W, burnin, n.sample, thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.Sigma.df=NULL, prior.Sigma.scale=NULL, rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 {
 ##############################################
 #### Format the arguments and check for errors
@@ -92,10 +92,11 @@ failures.DA <- trials - Y.DA
 #### Priors
   if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
   if(is.null(prior.var.beta)) prior.var.beta <- rep(100000, p)
-  if(is.null(prior.Sigma.df)) prior.Sigma.df <- J+1
-  if(is.null(prior.Sigma.scale)) prior.Sigma.scale <- diag(rep(1/1000,J))
+  if(is.null(prior.Sigma.df)) prior.Sigma.df <- 2
+  if(is.null(prior.Sigma.scale)) prior.Sigma.scale <- rep(100000, J)
 prior.beta.check(prior.mean.beta, prior.var.beta, p)
-common.prior.varmat.check(prior.Sigma.scale, J)  
+    if(!is.numeric(prior.Sigma.scale)) stop("prior.Sigma.scale has non-numeric values.", call.=FALSE)    
+    if(sum(is.na(prior.Sigma.scale))!=0) stop("prior.Sigma.scale has missing values.", call.=FALSE)   
   
   
 #### Compute the blocking structure for beta     
@@ -136,6 +137,7 @@ phi <- res.temp
 phi[is.na(phi)] <- rnorm(n=sum(is.na(phi)), mean=0, sd=sd(res.temp, na.rm=T))
 Sigma <- cov(phi)
 Sigma.inv <- solve(Sigma)
+Sigma.a <- rep(1, J)
 regression <- X.standardised %*% beta
 lp <- regression + phi + offset
 prob <- exp(lp)  / (1 + exp(lp))
@@ -150,6 +152,7 @@ n.keep <- floor((n.sample - burnin)/thin)
 samples.beta <- array(NA, c(n.keep, J*p))
 samples.phi <- array(NA, c(n.keep, N.all))
 samples.Sigma <- array(NA, c(n.keep, J, J))
+samples.Sigma.a <- array(NA, c(n.keep, J))
   if(!fix.rho.S) samples.rho <- array(NA, c(n.keep, 1))
   if(!fix.rho.T) samples.alpha <- array(NA, c(n.keep, 2))
 samples.loglike <- array(NA, c(n.keep, N.all))
@@ -163,7 +166,8 @@ accept.beta <- rep(0,2*J)
 proposal.sd.beta <- rep(0.01, J)
 proposal.sd.phi <- 0.1
 proposal.sd.rho <- 0.02
-Sigma.post.df <- prior.Sigma.df + K * N  
+Sigma.post.df <- prior.Sigma.df + J - 1 + K * N  
+Sigma.a.post.shape <- (prior.Sigma.df + J) / 2
   
   
   
@@ -200,13 +204,13 @@ islands <- W.islands$comp.id
 n.islands <- max(W.islands$nc)
   if(rho==1 & alpha[1]==2 & alpha[2]==-1) 
   {
-  Sigma.post.df <- prior.Sigma.df + ((N-2) * (K-n.islands))/2
+  Sigma.post.df <- prior.Sigma.df + ((N-2) * (K-n.islands)) + J - 1   
   }else if(rho==1)
   {
-  Sigma.post.df <- prior.Sigma.df + (N * (K-n.islands))/2        
+  Sigma.post.df <- prior.Sigma.df + (N * (K-n.islands)) + J - 1        
   }else if(alpha[1]==2 & alpha[2]==-1)
   {
-  Sigma.post.df <- prior.Sigma.df + ((N-2) * K)/2          
+  Sigma.post.df <- prior.Sigma.df + ((N-2) * K) + J - 1             
   }else
   {}
 
@@ -290,7 +294,7 @@ n.islands <- max(W.islands$nc)
     ####################
     ## Sample from Sigma
     ####################
-    Sigma.post.scale <- prior.Sigma.scale + t(phi[1:K, ]) %*% Q %*% phi[1:K, ] + t(phi[(K+1):(2*K), ]) %*% Q %*% phi[(K+1):(2*K), ]
+    Sigma.post.scale <- 2 * prior.Sigma.df * diag(1 / Sigma.a) + t(phi[1:K, ]) %*% Q %*% phi[1:K, ] + t(phi[(K+1):(2*K), ]) %*% Q %*% phi[(K+1):(2*K), ]
     for(t in 3:N)
     {
       phit <- phi[((t-1)*K+1):(t*K), ]
@@ -301,6 +305,14 @@ n.islands <- max(W.islands$nc)
     }
     Sigma <- riwish(Sigma.post.df, Sigma.post.scale)
     Sigma.inv <- solve(Sigma)
+ 
+        
+
+    ######################
+    ## Sample from Sigma.a
+    ######################
+    Sigma.a.posterior.scale <- prior.Sigma.df * diag(Sigma.inv) + 1 / prior.Sigma.scale^2
+    Sigma.a <- 1 / rgamma(J, Sigma.a.post.shape, scale=(1/Sigma.a.posterior.scale))  
     
     
     
@@ -373,6 +385,7 @@ n.islands <- max(W.islands$nc)
       samples.beta[ele, ] <- as.numeric(beta)
       samples.phi[ele, ] <- as.numeric(t(phi))
       samples.Sigma[ele, , ] <- Sigma
+      samples.Sigma.a[ele, ] <- Sigma.a
       if(!fix.rho.S) samples.rho[ele, ] <- rho
       if(!fix.rho.T) samples.alpha[ele, ] <- alpha
       samples.loglike[ele, ] <- loglike
@@ -478,7 +491,7 @@ samples.beta.orig <- samples.beta
   
 #### Create a summary object
 samples.beta.orig <- mcmc(samples.beta.orig)
-summary.beta <- t(apply(samples.beta.orig, 2, quantile, c(0.5, 0.025, 0.975))) 
+summary.beta <- t(rbind(apply(samples.beta.orig, 2, mean), apply(samples.beta.orig, 2, quantile, c(0.025, 0.975)))) 
 summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.beta,p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
 col.name <- rep(NA, p*(J-1))
   
@@ -496,10 +509,10 @@ col.name <- rep(NA, p*(J-1))
     }
   }
 rownames(summary.beta) <- col.name
-colnames(summary.beta) <- c("Median", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
   
 summary.hyper <- array(NA, c((J+3) ,7))
-summary.hyper[1:J, 1] <- diag(apply(samples.Sigma, c(2,3), quantile, c(0.5)))
+summary.hyper[1:J, 1] <- diag(apply(samples.Sigma, c(2,3), mean))
 summary.hyper[1:J, 2] <- diag(apply(samples.Sigma, c(2,3), quantile, c(0.025)))
 summary.hyper[1:J, 3] <- diag(apply(samples.Sigma, c(2,3), quantile, c(0.975)))
 summary.hyper[1:J, 4] <- rep(n.keep, J)
@@ -512,7 +525,7 @@ summary.hyper[1:J, 6] <- diag(apply(samples.Sigma, c(2,3), effectiveSize))
   
   if(!fix.rho.S)
   {
-  summary.hyper[(J+1), 1:3] <- quantile(samples.rho, c(0.5, 0.025, 0.975))
+  summary.hyper[(J+1), 1:3] <- c(mean(samples.rho), quantile(samples.rho, c(0.025, 0.975)))
   summary.hyper[(J+1), 4:5] <- c(n.keep, accept.rho)
   summary.hyper[(J+1), 6:7] <- c(effectiveSize(samples.rho), geweke.diag(samples.rho)$z)
   }else
@@ -524,10 +537,10 @@ summary.hyper[1:J, 6] <- diag(apply(samples.Sigma, c(2,3), effectiveSize))
   
   if(!fix.rho.T)
   {
-  summary.hyper[(J+2), 1:3] <- quantile(samples.alpha[ ,1], c(0.5, 0.025, 0.975))
+  summary.hyper[(J+2), 1:3] <- c(mean(samples.alpha[ ,1]), quantile(samples.alpha[ ,1], c(0.025, 0.975)))
   summary.hyper[(J+2), 4:5] <- c(n.keep, accept.alpha)
   summary.hyper[(J+2), 6:7] <- c(effectiveSize(samples.alpha[ ,1]), geweke.diag(samples.alpha[ ,1])$z)
-  summary.hyper[(J+3), 1:3] <- quantile(samples.alpha[ ,2], c(0.5, 0.025, 0.975))
+  summary.hyper[(J+3), 1:3] <- c(mean(samples.alpha[ ,2]), quantile(samples.alpha[ ,2], c(0.025, 0.975)))
   summary.hyper[(J+3), 4:5] <- c(n.keep, accept.alpha)
   summary.hyper[(J+3), 6:7] <- c(effectiveSize(samples.alpha[ ,2]), geweke.diag(samples.alpha[ ,2])$z)
   }else
