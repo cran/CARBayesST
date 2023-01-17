@@ -42,14 +42,12 @@ double quadform(NumericMatrix Wtriplet, NumericVector Wtripletsum, const int n_t
 // Create new objects 
 double tau2_posteriorscale;
 double tau2_quadform = 0, tau2_phisq = 0;
-int row, col;
+
    
    
 // Compute the off diagonal elements of the quadratic form
      for(int l = 0; l < n_triplet; l++)
      {
-     row = Wtriplet(l,0) - 1;
-     col = Wtriplet(l,1) - 1;
      tau2_quadform = tau2_quadform + phi[(Wtriplet(l,0) - 1)] * theta[(Wtriplet(l,1) - 1)] * Wtriplet(l,2); 
      }
  
@@ -4314,7 +4312,7 @@ List updatetripList2(NumericMatrix trips, NumericVector vold,
   for(int l = 0; l < temporary.nrow(); l++) difference(l, 2) = 0;
   //   stuff needed for intermediate calculations
   double oldoffdiag_binary, newoffdiag_binary;
-  double newoffdiag_logit,  oldoffdiag_logit;
+  double newoffdiag_logit;//,  oldoffdiag_logit;
   int    diag_inds_1,       diag_inds_2, i;
   double olddiag_binary_1,  olddiag_binary_2;
   double newdiag_binary_1,  newdiag_binary_2;
@@ -4325,7 +4323,7 @@ List updatetripList2(NumericMatrix trips, NumericVector vold,
     //       this is the old off diagonal element (-ve to make +ve)
     oldoffdiag_binary = -temporary(i + nsites, 2)/rho;
     //       old and new v elements
-    oldoffdiag_logit  = vold[i];
+    //oldoffdiag_logit  = vold[i];
     newoffdiag_logit  = vnew[i];
     //       convert new v onto [0,1] scale
     newoffdiag_binary = -(1/(1 + exp(-newoffdiag_logit)));
@@ -5300,8 +5298,7 @@ NumericVector tau2quadform(NumericMatrix Wtriplet, NumericVector Wtripletsum, co
     NumericVector tau2_posteriorscale(Nchains), rhonew = clone(rho);
     NumericMatrix phinew = clone(phi), thetanew = clone(theta);
     double tau2_quadform = 0, tau2_phisq = 0;
-    int row, col;
-    
+
     for(int j = 0; j < Nchains; j++)
     {
         tau2_quadform = 0;
@@ -5309,8 +5306,6 @@ NumericVector tau2quadform(NumericMatrix Wtriplet, NumericVector Wtripletsum, co
         // Compute the off diagonal elements of the quadratic form
         for(int i = 0; i < n_triplet; i++)
         {
-            row = Wtriplet(i, 0) - 1;
-            col = Wtriplet(i, 1) - 1;
             tau2_quadform += phinew((Wtriplet(i, 0) - 1), j) * thetanew((Wtriplet(i, 1) - 1), j) * Wtriplet(i, 2); 
         }
         // Compute the diagonal elements of the quadratic form          
@@ -5664,9 +5659,9 @@ int poissoncouplingAllupdate(const int nsites, const int K, const int p, Numeric
     NumericMatrix gammanew = clone(gamma), wnew = clone(w), newoffset = clone(offset), betanew = clone(beta), lambdanew = clone(lambda), phinew = clone(phi);
     int beginchain1 = begin[swap1] - 1;
     int beginchain2 = begin[swap2] - 1;
-    double temp1, temp2;
-    temp1 = temps[swap1];
-    temp2 = temps[swap2];
+    //double temp1, temp2;
+    //temp1 = temps[swap1];
+    //temp2 = temps[swap2];
     double priorvardenomchain1, priorvardenomchain2, phipriorvarchain1, phipriorvarchain2, sumphichain1=0, sumphichain2=0, phipriormeanchain1, phipriormeanchain2;
     int rowstart=0, rowend=0;
     
@@ -5727,7 +5722,8 @@ int poissoncouplingAllupdate(const int nsites, const int K, const int p, Numeric
         phipriormeanchain2 = rhonew[swap2] * sumphichain2 / priorvardenomchain2; 
         
         phichain1 += (0.5/phipriorvarchain1) * pow((phinew(j, swap1) - phipriormeanchain1), 2) - (0.5/phipriorvarchain1) * pow((phinew(j, swap2) - phipriormeanchain1), 2);
-        phichain2 += (0.5/phipriormeanchain2) * pow((phinew(j, swap2) - phipriormeanchain2), 2) - (0.5/phipriormeanchain2) * pow((phinew(j, swap1) - phipriormeanchain2), 2);
+        //phichain2 += (0.5/phipriormeanchain2) * pow((phinew(j, swap2) - phipriormeanchain2), 2) - (0.5/phipriormeanchain2) * pow((phinew(j, swap1) - phipriormeanchain2), 2);
+        phichain2 += (0.5/phipriorvarchain2) * pow((phinew(j, swap2) - phipriormeanchain2), 2) - (0.5/phipriorvarchain2) * pow((phinew(j, swap1) - phipriormeanchain2), 2);
     }
     
     for(int k = 0; k < p; k++)     
@@ -6084,9 +6080,9 @@ int binomialcouplingAllupdate(const int nsites, const int K, const int p, Numeri
     NumericMatrix gammanew = clone(gamma), wnew = clone(w), newoffset = clone(offset), betanew = clone(beta), lambdanew = clone(lambda), phinew = clone(phi);
     int beginchain1 = begin[swap1] - 1;
     int beginchain2 = begin[swap2] - 1;
-    double temp1, temp2;
-    temp1 = temps[swap1];
-    temp2 = temps[swap2];
+    //double temp1, temp2;
+    //temp1 = temps[swap1];
+    //temp2 = temps[swap2];
     double priorvardenomchain1, priorvardenomchain2, phipriorvarchain1, phipriorvarchain2, sumphichain1=0, sumphichain2=0, phipriormeanchain1, phipriormeanchain2;
     int rowstart=0, rowend=0;
     
@@ -6146,7 +6142,8 @@ int binomialcouplingAllupdate(const int nsites, const int K, const int p, Numeri
         phipriormeanchain2 = rhonew[swap2] * sumphichain2 / priorvardenomchain2; 
         
         phichain1 += (0.5/phipriorvarchain1) * pow((phinew(j, swap1) - phipriormeanchain1), 2) - (0.5/phipriorvarchain1) * pow((phinew(j, swap2) - phipriormeanchain1), 2);
-        phichain2 += (0.5/phipriormeanchain2) * pow((phinew(j, swap2) - phipriormeanchain2), 2) - (0.5/phipriormeanchain2) * pow((phinew(j, swap1) - phipriormeanchain2), 2);
+        //phichain2 += (0.5/phipriormeanchain2) * pow((phinew(j, swap2) - phipriormeanchain2), 2) - (0.5/phipriormeanchain2) * pow((phinew(j, swap1) - phipriormeanchain2), 2);
+        phichain2 += (0.5/phipriorvarchain2) * pow((phinew(j, swap2) - phipriormeanchain2), 2) - (0.5/phipriorvarchain2) * pow((phinew(j, swap1) - phipriormeanchain2), 2);
     }
     
     for(int k = 0; k < p; k++)     
@@ -6302,9 +6299,9 @@ public:
     this->size_ = adj.size();
     this->nbs_.resize(this->size_);
     int row_id = 0;
-    for(const auto row: this->adj_) {
+    for(const auto& row: this->adj_) {
       int col_id = 0;
-      for(const auto entry: row) {
+      for(const auto& entry: row) {
         if (entry == 1) {
           this->nbs_[row_id].insert(col_id);
         }
@@ -6341,7 +6338,7 @@ public:
   }
   
   void add_edges(const std::list<Edge> & edges) {
-    for(const auto edge: edges) {
+    for(const auto& edge: edges) {
       this->add_edge(edge);
     }
   }
@@ -6371,9 +6368,9 @@ public:
   const std::list<Edge> edges() const {
     std::list<Edge> result;
     int row_id = 0;
-    for(const auto row: this->adj_) {
+    for(const auto& row: this->adj_) {
       int col_id = 0;
-      for(const auto entry: row) {
+      for(const auto& entry: row) {
         if (entry == 1) {
           result.push_back(std::make_tuple(col_id, row_id));
         }
@@ -6573,7 +6570,7 @@ private:
   }
   
   double find_best_cond(const CondSortedList & list, signed int mustHave, signed int cantHave) const {
-    for(const CondSortedEntry entry: list) {
+    for(const CondSortedEntry& entry: list) {
       const std::set<int> & opts = * std::get<0>(entry);
       if ((mustHave != -1) && (opts.find((int)mustHave) == opts.end())) {
         continue;
