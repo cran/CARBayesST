@@ -1,4 +1,4 @@
-gaussian.CARanova <- function(formula, data=NULL, W, burnin, n.sample, thin=1,  prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.tau2=NULL, rho.S=NULL, rho.T=NULL, verbose=TRUE)
+gaussian.CARanova <- function(formula, data=NULL, W, burnin, n.sample, thin=1,  n.chains=1, n.cores=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.nu2=NULL, prior.tau2=NULL, rho.S=NULL, rho.T=NULL, verbose=TRUE)
 {
 ##############################################
 #### Format the arguments and check for errors
@@ -20,7 +20,13 @@ offset <- frame.results$offset
 Y <- frame.results$Y
 which.miss <- frame.results$which.miss
 n.miss <- frame.results$n.miss  
-Y.DA <- Y  
+ 
+
+#### Determine the number of spatial and temporal units
+W.quants <- common.Wcheckformat.leroux(W)
+K <- W.quants$n
+N <- N.all / K
+offset.mat <- matrix(offset, nrow=K, ncol=N, byrow=FALSE) 
 
 
 #### Check on the rho arguments
@@ -50,18 +56,6 @@ Y.DA <- Y
     if(lambda<0 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
     if(lambda>1 ) stop("rho.T is outside the range [0, 1].", call.=FALSE)  
 
-   
-#### CAR quantities
-W.quants <- common.Wcheckformat.leroux(W)
-K <- W.quants$n
-N <- N.all / K
-W <- W.quants$W
-W.triplet <- W.quants$W.triplet
-W.n.triplet <- W.quants$n.triplet
-W.triplet.sum <- W.quants$W.triplet.sum
-n.neighbours <- W.quants$n.neighbours 
-W.begfin <- W.quants$W.begfin
-
     
 #### Priors
     if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
@@ -78,486 +72,313 @@ common.burnin.nsample.thin.check(burnin, n.sample, thin)
 
 
 
-#############################
-#### Initial parameter values
-#############################
-mod.glm <- glm(Y~X.standardised-1, offset=offset)
-beta.mean <- mod.glm$coefficients
-beta.sd <- sqrt(diag(summary(mod.glm)$cov.scaled))
-beta <- rnorm(n=length(beta.mean), mean=beta.mean, sd=beta.sd)
-
-res.temp <- Y - X.standardised %*% beta - offset
-res.sd <- sd(res.temp, na.rm=TRUE)/5
-phi <- rnorm(n=K, mean=0, sd = res.sd)
-delta <- rnorm(n=N, mean=0, sd = res.sd)
-tau2.phi <- var(phi)/10
-tau2.delta <- var(delta)/10
-nu2 <- runif(1, 0, res.sd)
-
-#### Matrix versions of quantites
-offset.mat <- matrix(offset, nrow=K, ncol=N, byrow=FALSE) 
-regression.mat <- matrix(X.standardised %*% beta, nrow=K, ncol=N, byrow=FALSE)   
-phi.mat <- matrix(rep(phi, N), byrow=F, nrow=K)
-delta.mat <- matrix(rep(delta, K), byrow=T, nrow=K)
-fitted <- as.numeric(offset.mat + regression.mat + phi.mat  + delta.mat)
-
-
-
-###############################    
-#### Set up the MCMC quantities    
-###############################
-#### Matrices to store samples
-n.keep <- floor((n.sample - burnin)/thin)
-samples.beta <- array(NA, c(n.keep, p))
-samples.phi <- array(NA, c(n.keep, K))
-samples.delta <- array(NA, c(n.keep, N))
-samples.nu2 <- array(NA, c(n.keep, 1))
-samples.tau2 <- array(NA, c(n.keep, 2))
-colnames(samples.tau2) <- c("tau2.phi", "tau2.delta")    
-    if(!fix.rho.S) samples.rho <- array(NA, c(n.keep, 1))
-    if(!fix.rho.T) samples.lambda <- array(NA, c(n.keep, 1))
-samples.fitted <- array(NA, c(n.keep, N.all))
-samples.loglike <- array(NA, c(n.keep, N.all))
-    if(n.miss>0) samples.Y <- array(NA, c(n.keep, n.miss))
-
-  
-
-#### Specify the Metropolis quantities
-accept <- rep(0,4)
-proposal.sd.rho <- 0.02
-proposal.sd.lambda <- 0.02
-tau2.phi.shape <- prior.tau2[1] + K/2
-tau2.delta.shape <- prior.tau2[1] + N/2
-nu2.shape <- prior.nu2[1] + N*K/2    
-    
-    
-    
-##########################################
-#### Specify spatial and temporal elements
-##########################################
-#### Spatial determinant
-    if(!fix.rho.S) 
-    {
-    Wstar <- diag(apply(W,1,sum)) - W
-    Wstar.eigen <- eigen(Wstar)
-    Wstar.val <- Wstar.eigen$values
-    det.Q.W <-  0.5 * sum(log((rho * Wstar.val + (1-rho))))     
-    }else
-    {}
-    
-#### Temporal neighbourhood matrix
-D <-array(0, c(N,N))
-for(i in 1:N)
-{
-    for(j in 1:N)
-    {
-        if(abs((i-j))==1)  D[i,j] <- 1 
-    }    
-}
+########################
+#### Run the MCMC chains
+########################
+   if(n.chains==1)
+   {
+   #### Only 1 chain
+   results <- gaussian.CARanovaMCMC(Y=Y, offset=offset, X.standardised=X.standardised, W=W, interaction=interaction, rho=rho, lambda=lambda, fix.rho.S=fix.rho.S, fix.rho.T=fix.rho.T, K=K, N=N, N.all=N.all, p=p, which.miss=which.miss, n.miss=n.miss, burnin=burnin, n.sample=n.sample, thin=thin, prior.mean.beta=prior.mean.beta, prior.var.beta=prior.var.beta, prior.tau2=prior.tau2, prior.nu2=prior.nu2, verbose=verbose, chain=1)
+   }else if(n.chains > 1 & ceiling(n.chains)==floor(n.chains) & n.cores==1)
+   {
+   #### Multiple chains in  series
+   results <- as.list(rep(NA, n.chains))
+         for(i in 1:n.chains)
+         {
+         results[[i]] <- gaussian.CARanovaMCMC(Y=Y, offset=offset, X.standardised=X.standardised, W=W, interaction=interaction, rho=rho, lambda=lambda, fix.rho.S=fix.rho.S, fix.rho.T=fix.rho.T, K=K, N=N, N.all=N.all, p=p, which.miss=which.miss, n.miss=n.miss, burnin=burnin, n.sample=n.sample, thin=thin, prior.mean.beta=prior.mean.beta, prior.var.beta=prior.var.beta, prior.tau2=prior.tau2, prior.nu2=prior.nu2, verbose=verbose, chain=i)
+         }
+   }else if(n.chains > 1 & ceiling(n.chains)==floor(n.chains) & n.cores>1 & ceiling(n.cores)==floor(n.cores))   
+   {   
+   #### Multiple chains in parallel
+   results <- as.list(rep(NA, n.chains))
+      if(verbose)
+      {
+      compclust <- makeCluster(n.cores, outfile="CARBayesSTprogress.txt")
+      cat("The current progress of the model fitting algorithm has been output to CARBayesSTprogress.txt in the working directory")
+      }else
+      {
+      compclust <- makeCluster(n.cores)
+      }
+   results <- clusterCall(compclust, fun=gaussian.CARanovaMCMC, Y=Y, offset=offset, X.standardised=X.standardised, W=W, interaction=interaction, rho=rho, lambda=lambda, fix.rho.S=fix.rho.S, fix.rho.T=fix.rho.T, K=K, N=N, N.all=N.all, p=p, which.miss=which.miss, n.miss=n.miss, burnin=burnin, n.sample=n.sample, thin=thin, prior.mean.beta=prior.mean.beta, prior.var.beta=prior.var.beta, prior.tau2=prior.tau2, prior.nu2=prior.nu2, verbose=verbose, chain="all")
+   stopCluster(compclust)
+   }else
+   {
+   stop("n.chains or n.cores are not positive integers.", call.=FALSE)  
+   }
 
 
-#### Temporal triplet object
-D.triplet <- c(NA, NA, NA)
-    for(i in 1:N)
-    {
-        for(j in 1:N)
-        {
-            if(D[i,j]>0)
-            {
-            D.triplet <- rbind(D.triplet, c(i,j, D[i,j]))     
-            }else{}
-        }
-    }
-D.triplet <- D.triplet[-1, ]     
-D.n.triplet <- nrow(D.triplet) 
-D.triplet.sum <- tapply(D.triplet[ ,3], D.triplet[ ,1], sum)
-D.neighbours <- tapply(D.triplet[ ,3], D.triplet[ ,1], length)
-
-
-#### Temporal begfin argument
-D.begfin <- array(NA, c(N, 2))     
-temp <- 1
-    for(i in 1:N)
-    {
-    D.begfin[i, ] <- c(temp, (temp + D.neighbours[i]-1))
-    temp <- temp + D.neighbours[i]
-    }
-
-
-#### Temporal determinant     
-    if(!fix.rho.T) 
-    {
-    Dstar <- diag(apply(D,1,sum)) - D
-    Dstar.eigen <- eigen(Dstar)
-    Dstar.val <- Dstar.eigen$values
-    det.Q.D <-  0.5 * sum(log((lambda * Dstar.val + (1-lambda))))    
-    }else
-    {}
-
-
-#### Beta update quantities
-data.precision.beta <- t(X.standardised) %*% X.standardised
-    if(length(prior.var.beta)==1)
-    {
-    prior.precision.beta <- 1 / prior.var.beta
-    }else
-    {
-    prior.precision.beta <- solve(diag(prior.var.beta))
-    }
-
-
-
-#### Check for islands
-W.list<- mat2listw(W)
-W.nb <- W.list$neighbours
-W.islands <- n.comp.nb(W.nb)
-islands <- W.islands$comp.id
-n.islands <- max(W.islands$nc)
-    if(rho==1) tau2.phi.shape <- prior.tau2[1] + 0.5 * (K-n.islands)   
-    if(lambda==1) tau2.delta.shape <- prior.tau2[1] + 0.5 * (N-1)   
-
-
-
-###########################
-#### Run the Bayesian model
-###########################
-#### Start timer
-    if(verbose)
-    {
-    cat("Generating", n.keep, "post burnin and thinned (if requested) samples.\n", sep = " ")
-    progressBar <- txtProgressBar(style = 3)
-    percentage.points<-round((1:100/100)*n.sample)
-    }else
-    {
-    percentage.points<-round((1:100/100)*n.sample)     
-    }
- 
-   
-#### Create the MCMC samples    
-    for(j in 1:n.sample)
-    {
-    ####################################
-    ## Sample from Y - data augmentation
-    ####################################
-        if(n.miss>0)
-        {
-        Y.DA[which.miss==0] <- rnorm(n=n.miss, mean=fitted[which.miss==0], sd=sqrt(nu2))    
-        }else
-        {}
-    Y.DA.mat <- matrix(Y.DA, nrow=K, ncol=N, byrow=FALSE)
-
-        
-        
-    ##################
-    ## Sample from nu2
-    ##################
-    nu2.offset <- as.numeric(Y.DA.mat - offset.mat - regression.mat - phi.mat - delta.mat)
-    nu2.scale <- prior.nu2[2]  + sum(nu2.offset^2)/2
-    nu2 <- 1 / rgamma(1, nu2.shape, scale=(1/nu2.scale)) 
-        
-        
-        
-    ####################
-    ## Sample from beta
-    ####################
-    fc.precision <- prior.precision.beta + data.precision.beta / nu2
-    fc.var <- solve(fc.precision)
-    beta.offset <- as.numeric(Y.DA.mat - offset.mat - phi.mat - delta.mat)
-    beta.offset2 <- t(X.standardised) %*% beta.offset / nu2 + prior.precision.beta %*% prior.mean.beta
-    fc.mean <- fc.var %*% beta.offset2
-    chol.var <- t(chol(fc.var))
-    beta <- fc.mean + chol.var %*% rnorm(p)        
-    regression.mat <- matrix(X.standardised %*% beta, nrow=K, ncol=N, byrow=FALSE)  
-        
-        
-    ####################
-    ## Sample from phi
-    ####################
-    phi.offset <- Y.DA.mat - offset.mat - regression.mat -  delta.mat
-    phi.offset2 <- apply(phi.offset,1, sum, na.rm=TRUE)
-    temp1 <- gaussiancarupdate(W.triplet, W.begfin, W.triplet.sum, K, phi, tau2.phi, nu2, phi.offset2, rho, N)
-    phi <- temp1
-        if(rho<1)
-        {
-        phi <- phi - mean(phi)
-        }else
-        {
-        phi[which(islands==1)] <- phi[which(islands==1)] - mean(phi[which(islands==1)])   
-        }
-    phi.mat <- matrix(rep(phi, N), byrow=F, nrow=K)    
-        
-        
-        
-    ####################
-    ## Sample from delta
-    ####################
-    delta.offset <- Y.DA.mat - offset.mat - regression.mat -  phi.mat
-    delta.offset2 <- apply(delta.offset,2, sum, na.rm=TRUE)
-    temp2 <- gaussiancarupdate(D.triplet, D.begfin, D.triplet.sum, N, delta, tau2.delta, nu2, delta.offset2, lambda, K)
-    delta <- temp2
-    delta <- delta - mean(delta)
-    delta.mat <- matrix(rep(delta, K), byrow=T, nrow=K)
-
-                
-        
-    #######################
-    ## Sample from tau2.phi
-    #######################
-    temp2.phi <- quadform(W.triplet, W.triplet.sum, W.n.triplet, K, phi, phi, rho)
-    tau2.phi.scale <- temp2.phi + prior.tau2[2] 
-    tau2.phi <- 1 / rgamma(1, tau2.phi.shape, scale=(1/tau2.phi.scale))
-        
-        
-    
-    #########################
-    ## Sample from tau2.delta
-    #########################
-    temp2.delta <- quadform(D.triplet, D.triplet.sum, D.n.triplet, N, delta, delta, lambda)
-    tau2.delta.scale <- temp2.delta + prior.tau2[2] 
-    tau2.delta <- 1 / rgamma(1, tau2.delta.shape, scale=(1/tau2.delta.scale))
-        
-        
-        
-    ##################
-    ## Sample from rho
-    ##################
-        if(!fix.rho.S)
-        {
-        proposal.rho <- rtruncnorm(n=1, a=0, b=1, mean=rho, sd=proposal.sd.rho)   
-        temp3 <- quadform(W.triplet, W.triplet.sum, W.n.triplet, K, phi, phi, proposal.rho)
-        det.Q.proposal <- 0.5 * sum(log((proposal.rho * Wstar.val + (1-proposal.rho))))              
-        logprob.current <- det.Q.W - temp2.phi / tau2.phi
-        logprob.proposal <- det.Q.proposal - temp3 / tau2.phi
-        hastings <- log(dtruncnorm(x=rho, a=0, b=1, mean=proposal.rho, sd=proposal.sd.rho)) - log(dtruncnorm(x=proposal.rho, a=0, b=1, mean=rho, sd=proposal.sd.rho)) 
-        prob <- exp(logprob.proposal - logprob.current + hastings)
-        
-        #### Accept or reject the proposal
-            if(prob > runif(1))
-            {
-            rho <- proposal.rho
-            det.Q.W <- det.Q.proposal
-            accept[1] <- accept[1] + 1           
-            }else
-            {}              
-        accept[2] <- accept[2] + 1           
-        }else
-        {}
-        
-    
-        
-    #####################
-    ## Sample from lambda
-    #####################
-        if(!fix.rho.T)
-        {
-        proposal.lambda <- rtruncnorm(n=1, a=0, b=1, mean=lambda, sd=proposal.sd.lambda)   
-        temp3 <- quadform(D.triplet, D.triplet.sum, D.n.triplet, N, delta, delta, proposal.lambda)
-        det.Q.proposal <- 0.5 * sum(log((proposal.lambda * Dstar.val + (1-proposal.lambda))))              
-        logprob.current <- det.Q.D - temp2.delta / tau2.delta
-        logprob.proposal <- det.Q.proposal - temp3 / tau2.delta
-        hastings <- log(dtruncnorm(x=lambda, a=0, b=1, mean=proposal.lambda, sd=proposal.sd.lambda)) - log(dtruncnorm(x=proposal.lambda, a=0, b=1, mean=lambda, sd=proposal.sd.lambda)) 
-        prob <- exp(logprob.proposal - logprob.current + hastings)
-        
-        #### Accept or reject the proposal
-            if(prob > runif(1))
-            {
-            lambda <- proposal.lambda
-            det.Q.D <- det.Q.proposal
-            accept[3] <- accept[3] + 1           
-            }else
-            {}              
-        accept[4] <- accept[4] + 1           
-        }else
-        {}
-        
-        
-        
-    #########################
-    ## Calculate the deviance
-    #########################
-    fitted <- as.numeric(offset.mat + regression.mat + phi.mat  + delta.mat)
-    loglike <- dnorm(Y, mean = fitted, sd = rep(sqrt(nu2),N.all), log=TRUE)
-        
-
-        
-    ###################
-    ## Save the results
-    ###################
-        if(j > burnin & (j-burnin)%%thin==0)
-        {
-        ele <- (j - burnin) / thin
-        samples.beta[ele, ] <- beta
-        samples.phi[ele, ] <- phi
-        samples.delta[ele, ] <- delta
-            if(!fix.rho.S) samples.rho[ele, ] <- rho
-            if(!fix.rho.T) samples.lambda[ele, ] <- lambda
-        samples.nu2[ele, ] <- nu2
-        samples.fitted[ele, ] <- fitted
-        samples.tau2[ele, ] <- c(tau2.phi, tau2.delta)
-        samples.loglike[ele, ] <- loglike
-            if(n.miss>0) samples.Y[ele, ] <- Y.DA[which.miss==0]
-        }else
-        {}
-        
-        
-        
-        #######################################
-        ## Self tune the acceptance probabilties
-        ########################################
-            if(ceiling(j/100)==floor(j/100) & j < burnin)
-            {
-                if(!fix.rho.S) proposal.sd.rho <- common.accceptrates2(accept[1:2], proposal.sd.rho, 40, 50, 0.5)
-                if(!fix.rho.T) proposal.sd.lambda <- common.accceptrates2(accept[3:4], proposal.sd.lambda, 40, 50, 0.5)
-            accept <- rep(0,4)
-            }else
-            {}
-        
-        
-    
-        ################################       
-        ## print progress to the console
-        ################################
-            if(j %in% percentage.points & verbose)
-            {
-            setTxtProgressBar(progressBar, j/n.sample)
-            }
-    }
-  
-  
 #### end timer
     if(verbose)
     {
-    cat("\nSummarising results.")
-    close(progressBar)
+    cat("\nSummarising results.\n")
     }else
     {}
 
-    
+
 
 ###################################
 #### Summarise and save the results 
 ###################################
-#### Compute the acceptance rates
-    if(!fix.rho.S)
+    if(n.chains==1)
     {
-    accept.rho <- 100 * accept[1] / accept[2]
+    #### If n.chains==1
+    ## Compute the acceptance rates
+    accept.final <- rep(NA, 5)
+    names(accept.final) <- c("beta", "phi", "delta", "rho.S", "rho.T")
+    accept.final[1:3] <- 100 
+        if(!fix.rho.S) accept.final[4] <- 100 * results$accept[1] / results$accept[2]
+        if(!fix.rho.T) accept.final[5] <- 100 * results$accept[3] / results$accept[4]
+
+    ## Compute the fitted deviance
+    mean.phi <- apply(results$samples.phi, 2, mean)
+    mean.delta <- apply(results$samples.delta, 2, mean)  
+    mean.phi.mat <- matrix(rep(mean.phi, N), byrow=F, nrow=K)
+    mean.delta.mat <- matrix(rep(mean.delta, K), byrow=T, nrow=K)
+    mean.beta <- apply(results$samples.beta,2,mean)
+    regression.mat <- matrix(X.standardised %*% mean.beta, nrow=K, ncol=N, byrow=FALSE)
+    fitted.mean <- as.numeric(offset.mat + regression.mat + mean.phi.mat + mean.delta.mat)    
+    nu2.mean <- mean(results$samples.nu2)
+    deviance.fitted <- -2 * sum(dnorm(Y, mean = fitted.mean, sd = rep(sqrt(nu2.mean),N.all), log = TRUE), na.rm=TRUE)
+    modelfit <- common.modelfit(results$samples.loglike, deviance.fitted)
+
+    ## Create the fitted values and residuals
+    fitted.values <- apply(results$samples.fitted, 2, mean)
+    response.residuals <- as.numeric(Y) - fitted.values
+    pearson.residuals <- response.residuals /sqrt(nu2.mean)
+    residuals <- data.frame(response=response.residuals, pearson=pearson.residuals)
+
+    ## Transform the parameters back to the origianl covariate scale.
+    samples.beta.orig <- common.betatransform(results$samples.beta, X.indicator, X.mean, X.sd, p, FALSE)
+    
+    ## Create the samples object
+        if(fix.rho.S & fix.rho.T)
+        {
+        samples.rhoext <- NA
+        }else if(fix.rho.S & !fix.rho.T)
+        {
+        samples.rhoext <- results$samples.lambda
+        names(samples.rhoext) <- "rho.T"
+        }else if(!fix.rho.S & fix.rho.T)
+        {
+        samples.rhoext <- results$samples.rho  
+        names(samples.rhoext) <- "rho.S"
+        }else
+        {
+        samples.rhoext <- cbind(results$samples.rho, results$samples.lambda)
+        colnames(samples.rhoext) <- c("rho.S", "rho.T")
+        }
+    colnames(results$samples.tau2) <- c("tau2.S", "tau2.T")
+    samples <- list(beta=mcmc(samples.beta.orig), phi=mcmc(results$samples.phi), delta=mcmc(results$samples.delta), tau2=mcmc(results$samples.tau2), nu2=mcmc(results$samples.nu2), rho=mcmc(samples.rhoext),  fitted=mcmc(results$samples.fitted), Y=mcmc(results$samples.Y))
+
+    ## Create a summary object
+    n.keep <- floor((n.sample - burnin)/thin)
+    summary.beta <- t(rbind(apply(samples$beta, 2, mean), apply(samples$beta, 2, quantile, c(0.025, 0.975))))     
+    summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.final[names(accept.final)=="beta"],p), effectiveSize(samples$beta), geweke.diag(samples$beta)$z)
+    rownames(summary.beta) <- colnames(X)
+    colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+
+    n.tau2 <- ncol(results$samples.tau2)
+    summary.tau2 <- cbind(apply(results$samples.tau2, 2, mean), t(apply(results$samples.tau2, 2, quantile, c(0.025, 0.975))), rep(n.keep, n.tau2), rep(100, n.tau2),
+                        effectiveSize(samples$tau2), geweke.diag(samples$tau2)$z)
+    summary.nu2 <- c(mean(results$samples.nu2), quantile(results$samples.nu2, c(0.025, 0.975)), n.keep, 100,
+                        effectiveSize(samples$nu2), geweke.diag(samples$nu2)$z)
+    summary.var <- rbind(summary.nu2, summary.tau2)
+    rownames(summary.var) <- c("nu2", "tau2.S", "tau2.T")               
+
+    summary.rho <- array(NA, c(2,7))
+    row.names(summary.rho) <- c("rho.S", "rho.T")
+            if(!fix.rho.S)
+            {
+            summary.rho[1, 1:3] <- c(mean(results$samples.rho), quantile(results$samples.rho, c(0.025, 0.975)))
+            summary.rho[1, 4:7] <- c(n.keep, accept.final[names(accept.final)=="rho.S"], effectiveSize(results$samples.rho), geweke.diag(results$samples.rho)$z)
+            }else
+            {
+            summary.rho[1, 1:3] <- c(rho, rho, rho)
+            summary.rho[1, 4:7] <- rep(NA, 4)
+            }
+            if(!fix.rho.T)
+            {
+            summary.rho[2, 1:3] <- c(mean(results$samples.lambda), quantile(results$samples.lambda, c(0.025, 0.975)))
+            summary.rho[2, 4:7] <- c(n.keep, accept.final[names(accept.final)=="rho.T"], effectiveSize(results$samples.lambda), geweke.diag(results$samples.lambda)$z)
+            }else
+            {
+            summary.rho[2, 1:3] <- c(lambda, lambda, lambda)
+            summary.rho[2, 4:7] <- rep(NA, 4)
+            }
+    summary.results <- rbind(summary.beta, summary.var, summary.rho)
+    summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
+    summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1) 
     }else
     {
-    accept.rho <- NA    
+    #### If n.chains > 1
+    ## Compute the acceptance rates
+    accept.final <- rep(NA, 5)
+    names(accept.final) <- c("beta", "phi", "delta", "rho.S", "rho.T")
+    accept.temp <- lapply(results, function(l) l[["accept"]])
+    accept.temp2 <- do.call(what=rbind, args=accept.temp)
+    accept.final[1:3] <- 100 
+        if(!fix.rho.S) accept.final[4] <- 100 * sum(accept.temp2[ ,1]) / sum(accept.temp2[ ,2])
+        if(!fix.rho.T) accept.final[5] <- 100 * sum(accept.temp2[ ,3]) / sum(accept.temp2[ ,4])
+
+    ## Extract the samples into separate matrix and list objects
+    samples.beta.list <- lapply(results, function(l) l[["samples.beta"]])
+    samples.beta.matrix <- do.call(what=rbind, args=samples.beta.list)   
+    samples.phi.list <- lapply(results, function(l) l[["samples.phi"]])
+    samples.phi.matrix <- do.call(what=rbind, args=samples.phi.list)
+    samples.delta.list <- lapply(results, function(l) l[["samples.delta"]])
+    samples.delta.matrix <- do.call(what=rbind, args=samples.delta.list)
+    samples.nu2.list <- lapply(results, function(l) l[["samples.nu2"]])
+    samples.nu2.matrix <- do.call(what=rbind, args=samples.nu2.list)
+        if(!fix.rho.S)
+        {
+        samples.rho.list <- lapply(results, function(l) l[["samples.rho"]])
+        samples.rho.matrix <- do.call(what=rbind, args=samples.rho.list)
+        }
+        if(!fix.rho.T)
+        {
+        samples.lambda.list <- lapply(results, function(l) l[["samples.lambda"]])
+        samples.lambda.matrix <- do.call(what=rbind, args=samples.lambda.list)
+        }
+    samples.tau2.list <- lapply(results, function(l) l[["samples.tau2"]])
+    samples.tau2.matrix <- do.call(what=rbind, args=samples.tau2.list)   
+    samples.loglike.list <- lapply(results, function(l) l[["samples.loglike"]])
+    samples.loglike.matrix <- do.call(what=rbind, args=samples.loglike.list)
+    samples.fitted.list <- lapply(results, function(l) l[["samples.fitted"]])
+    samples.fitted.matrix <- do.call(what=rbind, args=samples.fitted.list)
+        if(n.miss>0) samples.Y.list <- lapply(results, function(l) l[["samples.Y"]])
+
+    ## Compute the fitted deviance
+    mean.phi <- apply(samples.phi.matrix, 2, mean)
+    mean.delta <- apply(samples.delta.matrix, 2, mean)  
+    mean.phi.mat <- matrix(rep(mean.phi, N), byrow=F, nrow=K)
+    mean.delta.mat <- matrix(rep(mean.delta, K), byrow=T, nrow=K)
+    mean.beta <- apply(samples.beta.matrix,2,mean)
+    regression.mat <- matrix(X.standardised %*% mean.beta, nrow=K, ncol=N, byrow=FALSE)   
+    fitted.mean <- as.numeric(offset.mat + regression.mat + mean.phi.mat + mean.delta.mat)    
+    nu2.mean <- mean(samples.nu2.matrix)
+    deviance.fitted <- -2 * sum(dnorm(Y, mean = fitted.mean, sd = rep(sqrt(nu2.mean),N.all), log = TRUE), na.rm=TRUE)
+    modelfit <- common.modelfit(samples.loglike.matrix, deviance.fitted)
+
+    ## Create the fitted values and residuals
+    fitted.values <- apply(samples.fitted.matrix, 2, mean)
+    response.residuals <- as.numeric(Y) - fitted.values
+    pearson.residuals <- response.residuals /sqrt(nu2.mean)
+    residuals <- data.frame(response=response.residuals, pearson=pearson.residuals)
+
+    ## Transform the parameters back to the original covariate scale.
+    samples.beta.list <- samples.beta.list
+        for(j in 1:n.chains)
+        {
+        samples.beta.list[[j]] <- common.betatransform(samples.beta.list[[j]], X.indicator, X.mean, X.sd, p, FALSE)  
+        }
+    samples.beta.matrix <- do.call(what=rbind, args=samples.beta.list)
+
+    ## Create MCMC objects
+    beta.mcmc <- mcmc.list(lapply(samples.beta.list, mcmc))
+    phi.mcmc <- mcmc.list(lapply(samples.phi.list, mcmc))
+    nu2.mcmc <- mcmc.list(lapply(samples.nu2.list, mcmc))
+    delta.mcmc <- mcmc.list(lapply(samples.delta.list, mcmc))
+    fitted.mcmc <- mcmc.list(lapply(samples.fitted.list, mcmc))
+            for(j in 1:n.chains)
+            {
+            colnames(samples.tau2.list[[j]]) <- c("tau2.S", "tau2.T")  
+            }
+    tau2.mcmc <- mcmc.list(lapply(samples.tau2.list, mcmc))
+        if(n.miss>0) 
+        {    
+        Y.mcmc <- mcmc.list(lapply(samples.Y.list, mcmc))
+        }else
+        {
+        Y.mcmc <- NA    
+        }
+        if(fix.rho.S & fix.rho.T)
+        {
+        rhoext.mcmc <- NA
+        }else if(fix.rho.S & !fix.rho.T)
+        {
+            for(j in 1:n.chains)
+            {
+            colnames(samples.lambda.list[[j]]) <- c("rho.T")  
+            } 
+        rhoext.mcmc <- mcmc.list(lapply(samples.lambda.list, mcmc))
+        }else if(!fix.rho.S & fix.rho.T)
+        {
+            for(j in 1:n.chains)
+            {
+            colnames(samples.rho.list[[j]]) <- c("rho.S")  
+            } 
+        rhoext.mcmc <- mcmc.list(lapply(samples.rho.list, mcmc))
+        }else
+        {
+        rho.temp <- as.list(rep(NA, n.chains))    
+            for(j in 1:n.chains)
+            {
+            rho.temp[[j]] <- cbind(samples.rho.list[[j]], samples.lambda.list[[j]])
+            colnames(rho.temp[[j]]) <- c("rho.S", "rho.T")
+            }
+        rhoext.mcmc <- mcmc.list(lapply(rho.temp, mcmc))
+        }
+    samples <- list(beta=beta.mcmc, phi=phi.mcmc, delta=delta.mcmc, rho=rhoext.mcmc, tau2=tau2.mcmc, nu2=nu2.mcmc, fitted=fitted.mcmc, Y=Y.mcmc)
+
+    ## create a summary object
+    n.keep <- floor((n.sample - burnin)/thin) * n.chains
+    summary.beta <- t(rbind(apply(samples.beta.matrix, 2, mean), apply(samples.beta.matrix, 2, quantile, c(0.025, 0.975)))) 
+    summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.final[names(accept.final)=="beta"],p), effectiveSize(beta.mcmc), gelman.diag(beta.mcmc)$psrf[ ,2])
+    rownames(summary.beta) <- colnames(X)
+    colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "PSRF (upper 95% CI)")
+
+    n.tau2 <- ncol(samples.tau2.matrix)
+    summary.tau2 <- cbind(apply(samples.tau2.matrix, 2, mean), t(apply(samples.tau2.matrix, 2, quantile, c(0.025, 0.975))), rep(n.keep, n.tau2), rep(100, n.tau2),
+                        effectiveSize(tau2.mcmc), gelman.diag(tau2.mcmc)$psrf[ ,2])
+    summary.nu2 <- c(mean(samples.nu2.matrix), quantile(samples.nu2.matrix, c(0.025, 0.975)), n.keep, 100,
+                        effectiveSize(nu2.mcmc), gelman.diag(nu2.mcmc)$psrf[ ,2])
+    summary.var <- rbind(summary.nu2, summary.tau2)
+    rownames(summary.var) <- c("nu2", "tau2.S", "tau2.T")          
+
+    summary.rho <- array(NA, c(2,7))
+    row.names(summary.rho) <- c("rho.S", "rho.T")
+            if(!fix.rho.S)
+            {
+            temp <- mcmc.list(lapply(samples.rho.list, mcmc))
+            summary.rho[1, 1:3] <- c(mean(samples.rho.matrix), quantile(samples.rho.matrix, c(0.025, 0.975)))
+            summary.rho[1, 4:7] <- c(n.keep, accept.final[names(accept.final)=="rho.S"], effectiveSize(temp), gelman.diag(temp)$psrf[ ,2])
+            }else
+            {
+            summary.rho[1, 1:3] <- c(rho, rho, rho)
+            summary.rho[1, 4:7] <- rep(NA, 4)
+            }
+            if(!fix.rho.T)
+            {
+            temp <- mcmc.list(lapply(samples.lambda.list, mcmc))
+            summary.rho[2, 1:3] <- c(mean(samples.lambda.matrix), quantile(samples.lambda.matrix, c(0.025, 0.975)))
+            summary.rho[2, 4:7] <- c(n.keep, accept.final[names(accept.final)=="rho.T"], effectiveSize(temp), gelman.diag(temp)$psrf[ ,2])
+            }else
+            {
+            summary.rho[2, 1:3] <- c(lambda, lambda, lambda)
+            summary.rho[2, 4:7] <- rep(NA, 4)
+            }
+    
+    summary.results <- rbind(summary.beta, summary.var, summary.rho)
+    summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
+    summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
     }
 
-    if(!fix.rho.T)
-    {
-    accept.lambda <- 100 * accept[3] / accept[4]
-    }else
-    {
-    accept.lambda <- NA    
-    }
-accept.final <- c(rep(100,3), accept.rho, accept.lambda)
-names(accept.final) <- c("beta", "phi", "delta", "rho.S", "rho.T")        
-    
-   
-#### Compute the fitted deviance
-mean.phi <- apply(samples.phi, 2, mean)
-mean.delta <- apply(samples.delta, 2, mean)  
-mean.phi.mat <- matrix(rep(mean.phi, N), byrow=F, nrow=K)
-mean.delta.mat <- matrix(rep(mean.delta, K), byrow=T, nrow=K)
-mean.beta <- apply(samples.beta,2,mean)
-regression.mat <- matrix(X.standardised %*% mean.beta, nrow=K, ncol=N, byrow=FALSE)   
-fitted.mean <- as.numeric(offset.mat + regression.mat + mean.phi.mat + mean.delta.mat)    
-nu2.mean <- mean(samples.nu2)
-deviance.fitted <- -2 * sum(dnorm(Y, mean = fitted.mean, sd = rep(sqrt(nu2.mean),N.all), log = TRUE), na.rm=TRUE)
 
 
-#### Model fit criteria
-modelfit <- common.modelfit(samples.loglike, deviance.fitted)
-
-
-#### Create the fitted values and residuals
-fitted.values <- apply(samples.fitted, 2, mean)
-response.residuals <- as.numeric(Y) - fitted.values
-pearson.residuals <- response.residuals /sqrt(nu2.mean)
-residuals <- data.frame(response=response.residuals, pearson=pearson.residuals)
-
-    
-#### Transform the parameters back to the origianl covariate scale.
-samples.beta.orig <- common.betatransform(samples.beta, X.indicator, X.mean, X.sd, p, FALSE)
-
-
-#### Create a summary object
-samples.beta.orig <- mcmc(samples.beta.orig)
-summary.beta <- t(rbind(apply(samples.beta.orig, 2, mean), apply(samples.beta.orig, 2, quantile, c(0.025, 0.975)))) 
-summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(100,p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
-rownames(summary.beta) <- colnames(X)
-colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
-
-summary.hyper <- array(NA, c(5, 7))     
-rownames(summary.hyper) <- c("tau2.S", "tau2.T", "nu2", "rho.S", "rho.T")   
-summary.hyper[1,1:3] <- c(mean(samples.tau2[ ,1]), quantile(samples.tau2[ ,1], c(0.025, 0.975)))
-summary.hyper[2,1:3] <- c(mean(samples.tau2[ ,2]), quantile(samples.tau2[ ,2], c(0.025, 0.975)))
-summary.hyper[3,1:3] <- c(mean(samples.nu2), quantile(samples.nu2, c(0.025, 0.975)))
-summary.hyper[1, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.tau2[ ,1])), geweke.diag(mcmc(samples.tau2[ ,1]))$z)     
-summary.hyper[2, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.tau2[ ,2])), geweke.diag(mcmc(samples.tau2[ ,2]))$z)   
-summary.hyper[3, 4:7] <- c(n.keep, 100, effectiveSize(mcmc(samples.nu2)), geweke.diag(mcmc(samples.nu2))$z)  
-
-    if(!fix.rho.S)
-    {
-    summary.hyper[4,1:3] <- c(mean(samples.rho), quantile(samples.rho, c(0.025, 0.975)))
-    summary.hyper[4, 4:7] <- c(n.keep, accept.rho, effectiveSize(mcmc(samples.rho)), geweke.diag(mcmc(samples.rho))$z)  
-    }else
-    {
-    summary.hyper[4, 1:3] <- c(rho, rho, rho)
-    summary.hyper[4, 4:7] <- rep(NA, 4)
-    }
-
-    if(!fix.rho.T)
-    {
-    summary.hyper[5, 1:3] <- c(mean(samples.lambda), quantile(samples.lambda, c(0.025, 0.975)))
-    summary.hyper[5, 4:7] <- c(n.keep, accept.lambda, effectiveSize(samples.lambda), geweke.diag(samples.lambda)$z)
-    }else
-    {
-    summary.hyper[5, 1:3] <- c(lambda, lambda, lambda)
-    summary.hyper[5, 4:7] <- rep(NA, 4)
-    }   
-
-summary.results <- rbind(summary.beta, summary.hyper)
-summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
-summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
-    
-    
+###################################
 #### Compile and return the results
-#### Harmonise samples in case of them not being generated
-    if(fix.rho.S & fix.rho.T)
-    {
-    samples.rhoext <- NA
-    }else if(fix.rho.S & !fix.rho.T)
-    {
-    samples.rhoext <- samples.lambda
-    names(samples.rhoext) <- "rho.T"
-    }else if(!fix.rho.S & fix.rho.T)
-    {
-    samples.rhoext <- samples.rho  
-    names(samples.rhoext) <- "rho.S"
-    }else
-    {
-    samples.rhoext <- cbind(samples.rho, samples.lambda)
-    colnames(samples.rhoext) <- c("rho.S", "rho.T")
-    }
-    if(n.miss==0) samples.Y = NA
-colnames(samples.tau2) <- c("tau2.S", "tau2.T")
-
-samples <- list(beta=mcmc(samples.beta.orig), phi=mcmc(samples.phi),  delta=mcmc(samples.delta), tau2=mcmc(samples.tau2), nu2=mcmc(samples.nu2), rho=mcmc(samples.rhoext), fitted=mcmc(samples.fitted), Y=mcmc(samples.Y))        
+###################################
 model.string <- c("Likelihood model - Gaussian (identity link function)", "\nLatent structure model - spatial and temporal main effects\n")
-results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=NULL, formula=formula, model=model.string,  X=X)
-class(results) <- "CARBayesST"
-
-
-#### Finish by stating the time taken 
-    if(verbose)
-    {
-    b<-proc.time()
-    cat("Finished in ", round(b[3]-a[3], 1), "seconds.\n")
-    }else
-    {}
-return(results)
+n.total <- floor((n.sample - burnin) / thin) * n.chains
+mcmc.info <- c(n.total, n.sample, burnin, thin, n.chains)
+names(mcmc.info) <- c("Total samples", "n.sample", "burnin", "thin", "n.chains")
+results.final <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=NULL, formula=formula, model=model.string,  mcmc.info=mcmc.info, X=X)
+class(results.final) <- "CARBayesST"
+     if(verbose)
+     {
+     b<-proc.time()
+     cat("Finished in ", round(b[3]-a[3], 1), "seconds.\n")
+     }else
+     {}
+ return(results.final)
 }

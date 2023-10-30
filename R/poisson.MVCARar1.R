@@ -1,4 +1,4 @@
-poisson.MVCARar1 <- function(formula, data=NULL,  W, burnin, n.sample, thin=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.Sigma.df=NULL, prior.Sigma.scale=NULL, rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
+poisson.MVCARar1 <- function(formula, data=NULL,  W, burnin, n.sample, thin=1, n.chains=1, n.cores=1, prior.mean.beta=NULL, prior.var.beta=NULL, prior.Sigma.df=NULL, prior.Sigma.scale=NULL, rho.S=NULL, rho.T=NULL, MALA=TRUE, verbose=TRUE)
 {
 ##############################################
 #### Format the arguments and check for errors
@@ -27,61 +27,62 @@ N.all <- length(Y)
 J <- ncol(Y)
 which.miss <- frame.results$which.miss
 n.miss <- N.all - sum(which.miss)
-Y.DA <- Y   
-  
-  
-#### Create a missing list
-  if(n.miss>0)
-  {
-  miss.locator <- array(NA, c(n.miss, 2))
-  colnames(miss.locator) <- c("row", "column")
-  locations <- which(which.miss==0)
-  miss.locator[ ,1] <- ceiling(locations/J)
-  miss.locator[ ,2] <- locations - (miss.locator[ ,1]-1) * J
-  }else
-  {}
-
+ 
   
 #### W matrix
-  if(!is.matrix(W)) stop("W is not a matrix.", call.=FALSE)
-K <- nrow(W)
+    if(!is.matrix(W)) stop("W is not a matrix.", call.=FALSE)
+W.quants <- common.Wcheckformat.leroux(W)
+K <- W.quants$n
 N <- NK / K
-  if(ceiling(N)!= floor(N)) stop("The number of data points in Y divided by the number of rows in W is not a whole number.", call.=FALSE)
-  
-  
+    if(ceiling(N)!= floor(N)) stop("The number of data points in Y divided by the number of rows in W is not a whole number.", call.=FALSE)
+
+
+#### Create a missing list
+    if(n.miss>0)
+    {
+    miss.locator <- array(NA, c(n.miss, 2))
+    colnames(miss.locator) <- c("row", "column")
+    locations <- which(which.miss==0)
+    miss.locator[ ,1] <- ceiling(locations/J)
+    miss.locator[ ,2] <- locations - (miss.locator[ ,1]-1) * J
+    }else
+    {
+    miss.locator <- NA    
+    }
+
   
 #### Check on the rho arguments
-  if(is.null(rho.S))
-  {
-  rho <- runif(1)
-  fix.rho.S <- FALSE   
-  }else
-  {
-  rho <- rho.S
-  fix.rho.S <- TRUE
-  }
-  if(!is.numeric(rho)) stop("rho.S is fixed but is not numeric.", call.=FALSE)  
-  if(rho<0 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
-  if(rho>1 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)    
+    if(is.null(rho.S))
+    {
+    rho <- runif(1)
+    fix.rho.S <- FALSE   
+    }else
+    {
+    rho <- rho.S
+    fix.rho.S <- TRUE
+    }
+    if(!is.numeric(rho)) stop("rho.S is fixed but is not numeric.", call.=FALSE)  
+    if(rho<0 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)  
+    if(rho>1 ) stop("rho.S is outside the range [0, 1].", call.=FALSE)    
 
-  if(is.null(rho.T))
-  {
-  alpha <- runif(1)
-  fix.rho.T <- FALSE   
-  }else
-  {
-  alpha <- rho.T
-  fix.rho.T <- TRUE
-  }
-  if(!is.numeric(alpha)) stop("rho.T is fixed but is not numeric.", call.=FALSE)  
-  if(length(alpha)!=1) stop("rho.T is fixed but is not of length 1.", call.=FALSE)  
+    if(is.null(rho.T))
+    {
+    alpha <- runif(1)
+    fix.rho.T <- FALSE   
+    }else
+    {
+    alpha <- rho.T
+    fix.rho.T <- TRUE
+    }
+    if(!is.numeric(alpha)) stop("rho.T is fixed but is not numeric.", call.=FALSE)  
+    if(length(alpha)!=1) stop("rho.T is fixed but is not of length 1.", call.=FALSE)  
 
 
 #### Priors
-  if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
-  if(is.null(prior.var.beta)) prior.var.beta <- rep(100000, p)
-  if(is.null(prior.Sigma.df)) prior.Sigma.df <- 2
-  if(is.null(prior.Sigma.scale)) prior.Sigma.scale <- rep(100000, J)
+    if(is.null(prior.mean.beta)) prior.mean.beta <- rep(0, p)
+    if(is.null(prior.var.beta)) prior.var.beta <- rep(100000, p)
+    if(is.null(prior.Sigma.df)) prior.Sigma.df <- 2
+    if(is.null(prior.Sigma.scale)) prior.Sigma.scale <- rep(100000, J)
 prior.beta.check(prior.mean.beta, prior.var.beta, p)
     if(!is.numeric(prior.Sigma.scale)) stop("prior.Sigma.scale has non-numeric values.", call.=FALSE)    
     if(sum(is.na(prior.Sigma.scale))!=0) stop("prior.Sigma.scale has missing values.", call.=FALSE)   
@@ -93,11 +94,11 @@ beta.beg  <- block.temp[[1]]
 beta.fin <- block.temp[[2]]
 n.beta.block <- block.temp[[3]]      
 list.block <- as.list(rep(NA, n.beta.block*2))
-  for(r in 1:n.beta.block)
-  {
-  list.block[[r]] <- beta.beg[r]:beta.fin[r]-1
-  list.block[[r+n.beta.block]] <- length(list.block[[r]])
-  }
+    for(r in 1:n.beta.block)
+    {
+    list.block[[r]] <- beta.beg[r]:beta.fin[r]-1
+    list.block[[r+n.beta.block]] <- length(list.block[[r]])
+    }
   
   
 #### MCMC quantities - burnin, n.sample, thin
@@ -105,473 +106,354 @@ common.burnin.nsample.thin.check(burnin, n.sample, thin)
   
   
   
-#############################
-#### Initial parameter values
-#############################
-beta <- array(NA, c(p, J))
-  for(i in 1:J)
-  {
-  mod.glm <- glm(Y[ ,i]~X.standardised-1, offset=offset[ ,i], family="quasipoisson")
-  beta.mean <- mod.glm$coefficients
-  beta.sd <- sqrt(diag(summary(mod.glm)$cov.scaled))
-  beta[ ,i] <- rnorm(n=p, mean=beta.mean, sd=beta.sd)
-  }
-  
-log.Y <- log(Y)
-log.Y[Y==0] <- -0.1  
-res.temp <- log.Y - X.standardised %*% beta - offset
-res.sd <- sd(res.temp, na.rm=TRUE)/5
-phi.vec <- rnorm(n=N.all, mean=0, sd=res.sd)
-phi <- matrix(phi.vec, ncol=J, byrow=TRUE)
-Sigma <- cov(phi)
-Sigma.inv <- solve(Sigma)
-Sigma.a <- rep(1, J)
-regression <- X.standardised %*% beta
-fitted <- exp(regression + phi + offset)
-  
-  
-###############################    
-#### Set up the MCMC quantities    
-###############################
-#### Matrices to store samples    
-n.keep <- floor((n.sample - burnin)/thin)
-samples.beta <- array(NA, c(n.keep, J*p))
-samples.phi <- array(NA, c(n.keep, N.all))
-samples.Sigma <- array(NA, c(n.keep, J, J))
-samples.Sigma.a <- array(NA, c(n.keep, J))
-  if(!fix.rho.S) samples.rho <- array(NA, c(n.keep, 1))
-  if(!fix.rho.T) samples.alpha <- array(NA, c(n.keep, 1))
-samples.loglike <- array(NA, c(n.keep, N.all))
-samples.fitted <- array(NA, c(n.keep, N.all))
-  if(n.miss>0) samples.Y <- array(NA, c(n.keep, n.miss))
-  
-  
-#### Metropolis quantities
-accept <- rep(0,4)
-accept.beta <- rep(0,2*J)
-proposal.sd.beta <- rep(0.01, J)
-proposal.sd.phi <- 0.1
-proposal.sd.rho <- 0.02
-Sigma.post.df <- prior.Sigma.df + J - 1 + K * N  
-Sigma.a.post.shape <- (prior.Sigma.df + J) / 2
-
-
-
-##################################
-#### Set up the spatial quantities
-##################################
-#### CAR quantities
-W.quants <- common.Wcheckformat.leroux(W)
-W <- W.quants$W
-W.triplet <- W.quants$W.triplet
-n.triplet <- W.quants$n.triplet
-W.triplet.sum <- W.quants$W.triplet.sum
-n.neighbours <- W.quants$n.neighbours 
-W.begfin <- W.quants$W.begfin
-Wstar <- diag(apply(W,1,sum)) - W
-Q <- rho * Wstar + diag(rep(1-rho,K))
-  
-
-#### Create the determinant     
-  if(!fix.rho.S)
-  {
-  Wstar.eigen <- eigen(Wstar)
-  Wstar.val <- Wstar.eigen$values
-  det.Q <- sum(log((rho * Wstar.val + (1-rho))))    
-  }else
-  {} 
-
-
-#### Check for islands
-W.list<- mat2listw(W)
-W.nb <- W.list$neighbours
-W.islands <- n.comp.nb(W.nb)
-islands <- W.islands$comp.id
-n.islands <- max(W.islands$nc)
-  if(rho==1 & alpha==1) 
-  {
-  Sigma.post.df <- prior.Sigma.df + ((N-1) * (K-n.islands)) + J - 1
-  }else if(rho==1)
-  {
-  Sigma.post.df <- prior.Sigma.df + (N * (K-n.islands)) + J - 1        
-  }else if(alpha==1)
-  {
-  Sigma.post.df <- prior.Sigma.df + ((N-1) * K) + J - 1          
-  }else
-  {}
-
-
-  
-###########################
-#### Run the Bayesian model
-###########################
-#### Start timer
-  if(verbose)
-  {
-  cat("Generating", n.keep, "post burnin and thinned (if requested) samples.\n", sep = " ")
-  progressBar <- txtProgressBar(style = 3)
-  percentage.points<-round((1:100/100)*n.sample)
-  }else
-  {
-  percentage.points<-round((1:100/100)*n.sample)     
-  }
-  
-  
-  #### Create the MCMC samples      
-  for(j in 1:n.sample)
-  {
-    ####################################
-    ## Sample from Y - data augmentation
-    ####################################
-    if(n.miss>0)
-    {
-      Y.DA[miss.locator] <- rpois(n=n.miss, lambda=fitted[miss.locator])    
-    }else
-    {}
-    
-    
-    
-    ###################
-    ## Sample from beta
-    ###################
-    offset.temp <- phi + offset
-    for(r in 1:J)
-    {
-      if(MALA)
+########################
+#### Run the MCMC chains
+########################
+   if(n.chains==1)
+   {
+   #### Only 1 chain
+   results <- poisson.MVCARar1MCMC(Y=Y, offset=offset, X.standardised=X.standardised, W=W, rho=rho, alpha=alpha, fix.rho.S=fix.rho.S, fix.rho.T=fix.rho.T, K=K, N=N, NK=NK, J=J, N.all=N.all, p=p, miss.locator=miss.locator, n.miss=n.miss, burnin=burnin, n.sample=n.sample, thin=thin, MALA=MALA, n.beta.block=n.beta.block, list.block=list.block, prior.mean.beta=prior.mean.beta, prior.var.beta=prior.var.beta, prior.Sigma.df=prior.Sigma.df, prior.Sigma.scale=prior.Sigma.scale, verbose=verbose, chain=1)
+   }else if(n.chains > 1 & ceiling(n.chains)==floor(n.chains) & n.cores==1)
+   {
+   #### Multiple chains in  series
+   results <- as.list(rep(NA, n.chains))
+         for(i in 1:n.chains)
+         {
+         results[[i]] <- poisson.MVCARar1MCMC(Y=Y, offset=offset, X.standardised=X.standardised, W=W, rho=rho, alpha=alpha, fix.rho.S=fix.rho.S, fix.rho.T=fix.rho.T, K=K, N=N, NK=NK, J=J, N.all=N.all, p=p, miss.locator=miss.locator, n.miss=n.miss, burnin=burnin, n.sample=n.sample, thin=thin, MALA=MALA, n.beta.block=n.beta.block, list.block=list.block, prior.mean.beta=prior.mean.beta, prior.var.beta=prior.var.beta, prior.Sigma.df=prior.Sigma.df,  prior.Sigma.scale=prior.Sigma.scale, verbose=verbose, chain=i)
+         }
+   }else if(n.chains > 1 & ceiling(n.chains)==floor(n.chains) & n.cores>1 & ceiling(n.cores)==floor(n.cores))   
+   {   
+   #### Multiple chains in parallel
+   results <- as.list(rep(NA, n.chains))
+      if(verbose)
       {
-        temp <- poissonbetaupdateMALA(X.standardised, NK, p, beta[ ,r], offset.temp[ ,r], Y.DA[ ,r], prior.mean.beta, prior.var.beta, n.beta.block, proposal.sd.beta[r], list.block)
+      compclust <- makeCluster(n.cores, outfile="CARBayesSTprogress.txt")
+      cat("The current progress of the model fitting algorithm has been output to CARBayesSTprogress.txt in the working directory")
       }else
       {
-        temp <- poissonbetaupdateRW(X.standardised, NK, p, beta[ ,r], offset.temp[ ,r], Y.DA[ ,r], prior.mean.beta, prior.var.beta, n.beta.block, proposal.sd.beta[r], list.block)
+      compclust <- makeCluster(n.cores)
       }
-      beta[ ,r] <- temp[[1]]
-      accept.beta[r] <- accept.beta[r] + temp[[2]]
-      accept.beta[(r+J)] <- accept.beta[(r+J)] + n.beta.block  
-    }
-    regression <- X.standardised %*% beta          
-    
-    
-    
-    ##################
-    ## Sample from phi
-    ##################
-    #### Create the offset elements
-    den.offset <- rho * W.triplet.sum + 1 - rho
-    phi.offset <- regression + offset
-    
-    #### Create the random draws to create the proposal distribution
-    Chol.Sigma <- t(chol(proposal.sd.phi*Sigma))
-    z.mat <- matrix(rnorm(n=N.all, mean=0, sd=1), nrow=J, ncol=NK)
-    innovations <- t(Chol.Sigma %*% z.mat)
+   results <- clusterCall(compclust, fun=poisson.MVCARar1MCMC, Y=Y, offset=offset, X.standardised=X.standardised, W=W, rho=rho, alpha=alpha, fix.rho.S=fix.rho.S, fix.rho.T=fix.rho.T, K=K, N=N, NK=NK, J=J, N.all=N.all, p=p, miss.locator=miss.locator, n.miss=n.miss, burnin=burnin, n.sample=n.sample, thin=thin, MALA=MALA, n.beta.block=n.beta.block, list.block=list.block, prior.mean.beta=prior.mean.beta, prior.var.beta=prior.var.beta, prior.Sigma.df=prior.Sigma.df, prior.Sigma.scale=prior.Sigma.scale, verbose=verbose, chain="all")
+   stopCluster(compclust)
+   }else
+   {
+   stop("n.chains or n.cores are not positive integers.", call.=FALSE)  
+   }
 
-    #### Update the elements of phi
-    temp1 <- poissonmvar1carupdateRW(W.triplet, W.begfin, W.triplet.sum, K, N, J, phi, alpha, rho, Sigma.inv, Y.DA, innovations,  phi.offset, den.offset)      
-    phi <- temp1[[1]]
-     for(r in 1:J)
-     {
-     phi[ ,r] <- phi[ ,r] - mean(phi[ ,r])    
-     }
-    accept[1] <- accept[1] + temp1[[2]]
-    accept[2] <- accept[2] + NK
 
-    
-
-    ####################
-    ## Sample from Sigma
-    ####################
-    Sigma.post.scale <- 2 * prior.Sigma.df * diag(1 / Sigma.a) + t(phi[1:K, ]) %*% Q %*% phi[1:K, ]
-      for(t in 2:N)
-      {
-      phit <- phi[((t-1)*K+1):(t*K), ]
-      phitminus1 <- phi[((t-2)*K+1):((t-1)*K), ]
-      temp1 <- phit - alpha * phitminus1
-      Sigma.post.scale <- Sigma.post.scale + t(temp1) %*%  Q %*% temp1
-      }
-    Sigma <- riwish(Sigma.post.df, Sigma.post.scale)
-    Sigma.inv <- solve(Sigma)
-
-        
-
-    ######################
-    ## Sample from Sigma.a
-    ######################
-    Sigma.a.posterior.scale <- prior.Sigma.df * diag(Sigma.inv) + 1 / prior.Sigma.scale^2
-    Sigma.a <- 1 / rgamma(J, Sigma.a.post.shape, scale=(1/Sigma.a.posterior.scale))   
-
-    
-    
-    ######################
-    #### Sample from alpha
-    ######################
-      if(!fix.rho.T)
-      {
-      temp  <- MVSTrhoTAR1compute(W.triplet, W.triplet.sum, n.triplet, den.offset, K, N, J, phi, rho, Sigma.inv)
-      num <- temp[[1]]
-      denom <- temp[[2]]
-      alpha <- rnorm(n=1, mean = (num / denom), sd=sqrt(1 / denom))
-      }else
-      {}
-    
-
-    
-    ##################
-    ## Sample from rho
-    ##################
-    if(!fix.rho.S)
+#### end timer
+    if(verbose)
     {
-      ## Propose a new value
-      proposal.rho <- rtruncnorm(n=1, a=0, b=1, mean=rho, sd=proposal.sd.rho)
-      proposal.Q <- proposal.rho * Wstar + diag(rep(1-proposal.rho), K)
-      proposal.det.Q <-  sum(log((proposal.rho * Wstar.val + (1-proposal.rho))))  
-      proposal.den.offset <- proposal.rho * W.triplet.sum + 1 - proposal.rho
-      
-      ## Compute the quadratic forms based on current and proposed values of rho
-      temp1.QF  <- MVSTrhoSAR1compute(W.triplet, W.triplet.sum, n.triplet, den.offset, K, N, J, phi, rho, alpha, Sigma.inv)
-      temp2.QF  <- MVSTrhoSAR1compute(W.triplet, W.triplet.sum, n.triplet, proposal.den.offset, K, N, J, phi, proposal.rho, alpha, Sigma.inv)        
- 
- 
-      ## Compute the acceptance rate
-      logprob.current <- 0.5 * J * N * det.Q - 0.5 * temp1.QF
-      logprob.proposal <- 0.5 * J * N * proposal.det.Q - 0.5 * temp2.QF
-      hastings <- log(dtruncnorm(x=rho, a=0, b=1, mean=proposal.rho, sd=proposal.sd.rho)) - log(dtruncnorm(x=proposal.rho, a=0, b=1, mean=rho, sd=proposal.sd.rho)) 
-      prob <- exp(logprob.proposal - logprob.current + hastings)
-      if(prob > runif(1))
-      {
-        rho <- proposal.rho
-        det.Q <- proposal.det.Q
-        Q <- proposal.Q
-        accept[3] <- accept[3] + 1           
-      }else
-      {}              
-      accept[4] <- accept[4] + 1       
+    cat("\nSummarising results.\n")
     }else
     {}
 
-    
 
-    #########################
-    ## Calculate the deviance
-    #########################
-    fitted <- exp(regression + phi + offset)
-    loglike <- dpois(x=as.numeric(t(Y)), lambda=as.numeric(t(fitted)), log=TRUE)
-    
-    
-    
-    ###################
-    ## Save the results
-    ###################
-    if(j > burnin & (j-burnin)%%thin==0)
-    {
-      ele <- (j - burnin) / thin
-      samples.beta[ele, ] <- as.numeric(beta)
-      samples.phi[ele, ] <- as.numeric(t(phi))
-      samples.Sigma[ele, , ] <- Sigma
-      samples.Sigma.a[ele, ] <- Sigma.a
-      if(!fix.rho.S) samples.rho[ele, ] <- rho
-      if(!fix.rho.T) samples.alpha[ele, ] <- alpha
-      samples.loglike[ele, ] <- loglike
-      samples.fitted[ele, ] <- as.numeric(t(fitted))
-      if(n.miss>0) samples.Y[ele, ] <- Y.DA[miss.locator]
-    }else
-    {}
-    
-    
 
-    ########################################
-    ## Self tune the acceptance probabilties
-    ########################################
-    if(ceiling(j/100)==floor(j/100) & j < burnin)
+###################################
+#### Summarise and save the results 
+###################################
+    if(n.chains==1)
     {
-      #### Update the proposal sds
-      for(r in 1:J)
-      {
-        if(p>2)
+    #### If n.chains==1
+    ## Compute the acceptance rates
+    accept.final <- rep(NA, 5)
+    names(accept.final) <- c("beta", "phi", "rho.S", "rho.T", "Sigma")
+    accept.final[1] <- 100 * sum(results$accept.beta[1:J]) / sum(results$accept.beta[(J+1):(2*J)])
+    accept.final[2] <- 100 * results$accept[1] / results$accept[2]
+        if(!fix.rho.S) accept.final[3] <- 100 * results$accept[3] / results$accept[4]
+        if(!fix.rho.T) accept.final[4] <- 100
+    accept.final[5] <- 100
+
+    ## Compute the fitted deviance
+    mean.beta <- matrix(apply(results$samples.beta, 2, mean), nrow=p, ncol=J, byrow=F)
+    mean.phi <- matrix(apply(results$samples.phi, 2, mean), nrow=NK, ncol=J, byrow=T)
+    fitted.mean <- exp(X.standardised %*% mean.beta + mean.phi + offset)
+    deviance.fitted <- -2 * sum(dpois(x=as.numeric(t(Y)), lambda=as.numeric(t(fitted.mean)), log=TRUE), na.rm=TRUE)
+    modelfit <- common.modelfit(results$samples.loglike, deviance.fitted)
+
+    ## Create the fitted values and residuals
+    fitted.values <- matrix(apply(results$samples.fitted, 2, mean), nrow=NK, ncol=J, byrow=T)
+    response.residuals <- Y - fitted.values
+    pearson.residuals <- response.residuals / sqrt(fitted.values)
+    residuals <- list(response=response.residuals, pearson=pearson.residuals)
+ 
+    ## Transform the parameters back to the original covariate scale
+    samples.beta.orig <- results$samples.beta
+        for(r in 1:J)
         {
-          proposal.sd.beta[r] <- common.accceptrates1(accept.beta[c(r, (r+J))], proposal.sd.beta[r], 40, 50)
+        samples.beta.orig[ ,((r-1)*p+1):(r*p)] <- common.betatransform(results$samples.beta[ ,((r-1)*p+1):(r*p) ], X.indicator, X.mean, X.sd, p, FALSE)
+        }
+
+    ## Create the samples object
+        if(fix.rho.S & fix.rho.T)
+        {
+        samples.rhoext <- NA
+        }else if(fix.rho.S & !fix.rho.T)
+        {
+        samples.rhoext <- results$samples.alpha
+        colnames(samples.rhoext) <- c("rho.T")
+        }else if(!fix.rho.S & fix.rho.T)
+        {
+        samples.rhoext <- results$samples.rho  
+        names(samples.rhoext) <- "rho.S"
         }else
         {
-          proposal.sd.beta[r] <- common.accceptrates1(accept.beta[c(r, (r+J))], proposal.sd.beta[r], 30, 40)    
+        samples.rhoext <- cbind(results$samples.rho, results$samples.alpha)
+        colnames(samples.rhoext) <- c("rho.S", "rho.T")
         }
-      }
-      
-      proposal.sd.phi <- common.accceptrates1(accept[1:2], proposal.sd.phi, 40, 50)
+    samples <- list(beta=mcmc(samples.beta.orig), phi=mcmc(results$samples.phi), Sigma=results$samples.Sigma, rho=mcmc(samples.rhoext), fitted=mcmc(results$samples.fitted), Y=mcmc(results$samples.Y))
+
+    ## Create a summary object
+    n.keep <- floor((n.sample - burnin)/thin)
+    summary.beta <- t(rbind(apply(samples.beta.orig, 2, mean), apply(samples.beta.orig, 2, quantile, c(0.025, 0.975)))) 
+    summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.final[names(accept.final)=="beta"],p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
+    col.name <- rep(NA, p*(J-1))
+        if(is.null(colnames(Y)))
+        {
+            for(r in 1:J)
+            {
+            col.name[((r-1)*p+1):(r*p)] <- paste("Variable ", r,  " - ", colnames(X), sep="")   
+            }
+        }else
+        {
+            for(r in 1:J)
+            {
+            col.name[((r-1)*p+1):(r*p)] <- paste(colnames(Y)[r],  " - ", colnames(X), sep="")   
+            }
+        }
+    rownames(summary.beta) <- col.name
+    colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
+
+    summary.hyper <- array(NA, c((J+2) ,7))
+        for(r in 1:J)
+        {
+        summary.hyper[r, 1] <- mean(results$samples.Sigma[ ,r,r])
+        summary.hyper[r, 2:3] <- quantile(results$samples.Sigma[ ,r,r], c(0.025, 0.975)) 
+        summary.hyper[r, 4] <- n.keep
+        summary.hyper[r, 5] <- 100
+        summary.hyper[r, 6] <- effectiveSize(results$samples.Sigma[ ,r,r])
+        summary.hyper[r, 7] <- geweke.diag(results$samples.Sigma[ ,r,r])$z    
+        }
+ 
         if(!fix.rho.S)
         {
-        proposal.sd.rho <- common.accceptrates2(accept[3:4], proposal.sd.rho, 40, 50, 0.5)
+        summary.hyper[(J+1), 1:3] <- c(mean(results$samples.rho), quantile(results$samples.rho, c(0.025, 0.975)))
+        summary.hyper[(J+1), 4:5] <- c(n.keep, accept.final[names(accept.final)=="rho.S"])
+        summary.hyper[(J+1), 6:7] <- c(effectiveSize(results$samples.rho), geweke.diag(results$samples.rho)$z)
+        }else
+        {
+        summary.hyper[(J+1), 1:3] <- c(rho, rho, rho)
+        summary.hyper[(J+1), 4:5] <- rep(NA, 2)
+        summary.hyper[(J+1), 6:7] <- rep(NA, 2)
         }
-      accept <- c(0,0,0,0)
-      accept.beta <- rep(0,2*J)
-    }else
-    {}
-    
-    
-    ################################       
-    ## print progress to the console
-    ################################
-    if(j %in% percentage.points & verbose)
-    {
-      setTxtProgressBar(progressBar, j/n.sample)
-    }
-  }
   
+        if(!fix.rho.T)
+        {
+        summary.hyper[(J+2), 1:3] <- c(mean(results$samples.alpha), quantile(results$samples.alpha, c(0.025, 0.975)))
+        summary.hyper[(J+2), 4:5] <- c(n.keep, accept.final[names(accept.final)=="rho.T"])
+        summary.hyper[(J+2), 6:7] <- c(effectiveSize(results$samples.alpha), geweke.diag(results$samples.alpha)$z)
+        }else
+        {
+        summary.hyper[(J+2), 1:3] <- c(alpha, alpha, alpha)
+        summary.hyper[(J+2), 4:5] <- rep(NA, 2)
+        summary.hyper[(J+2), 6:7] <- rep(NA, 2)
+        }
   
-  ##### end timer
-  if(verbose)
-  {
-    cat("\nSummarising results.")
-    close(progressBar)
-  }else
-  {}
-  
-  
-  ###################################
-  #### Summarise and save the results 
-  ###################################
-  #### Compute the acceptance rates
-  accept.beta <- 100 * sum(accept.beta[1:J]) / sum(accept.beta[(J+1):(2*J)])
-  accept.phi <- 100 * accept[1] / accept[2]
-  if(!fix.rho.S)
-  {
-    accept.rho <- 100 * accept[3] / accept[4]
-  }else
-  {
-    accept.rho <- NA    
-  }
-  accept.Sigma <- 100
-    if(!fix.rho.T)
-    {
-    accept.alpha <- 100
+    summary.results <- rbind(summary.beta, summary.hyper)
+    rownames(summary.results)[((J*p)+1): nrow(summary.results)] <- c(paste(rep("Sigma",J), 1:J, 1:J, sep=""), "rho.S", "rho.T")
+    summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
+    summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
     }else
     {
-    accept.alpha <- NA
-    }
-  accept.final <- c(accept.beta, accept.phi, accept.rho, accept.Sigma, accept.alpha)
-  names(accept.final) <- c("beta", "phi", "rho.S", "Sigma", "rho.T")
-  
-  
-  #### Compute the fitted deviance
-  mean.beta <- matrix(apply(samples.beta, 2, mean), nrow=p, ncol=J, byrow=F)
-  mean.phi <- matrix(apply(samples.phi, 2, mean), nrow=NK, ncol=J, byrow=T)
-  fitted.mean <- exp(X.standardised %*% mean.beta + mean.phi + offset)
-  deviance.fitted <- -2 * sum(dpois(x=as.numeric(t(Y)), lambda=as.numeric(t(fitted.mean)), log=TRUE), na.rm=TRUE)
-  
-  
-  #### Model fit criteria
-  modelfit <- common.modelfit(samples.loglike, deviance.fitted)
-  
-  
-  #### transform the parameters back to the origianl covariate scale.
-  samples.beta.orig <- samples.beta
-    for(r in 1:J)
-    {
-    samples.beta.orig[ ,((r-1)*p+1):(r*p)] <- common.betatransform(samples.beta[ ,((r-1)*p+1):(r*p) ], X.indicator, X.mean, X.sd, p, FALSE)
-    }
-  
-  
-  #### Create a summary object
-  samples.beta.orig <- mcmc(samples.beta.orig)
-  summary.beta <- t(rbind(apply(samples.beta.orig, 2, mean), apply(samples.beta.orig, 2, quantile, c(0.025, 0.975)))) 
-  summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.beta,p), effectiveSize(samples.beta.orig), geweke.diag(samples.beta.orig)$z)
-  col.name <- rep(NA, p*(J-1))
+    #### If n.chains > 1
+    ## Compute the acceptance rates
+    accept.final <- rep(NA, 5)
+    names(accept.final) <- c("beta", "phi", "rho.S", "rho.T", "Sigma")
+    accept.final[5] <- 100
+    accept.temp <- lapply(results, function(l) l[["accept.beta"]])
+    accept.temp2 <- do.call(what=rbind, args=accept.temp)
+    accept.final[1] <- 100 * sum(accept.temp2[ ,1:J]) / sum(accept.temp2[ ,(J+1):(2*J)])
+    accept.temp <- lapply(results, function(l) l[["accept"]])
+    accept.temp2 <- do.call(what=rbind, args=accept.temp)
+    accept.final[2] <- 100 * sum(accept.temp2[ ,1]) / sum(accept.temp2[ ,2])
+        if(!fix.rho.S) accept.final[3] <- 100 * sum(accept.temp2[ ,3]) / sum(accept.temp2[ ,4])
+        if(!fix.rho.T) accept.final[4] <- 100
 
-  if(is.null(colnames(Y)))
-  {
-    for(r in 1:J)
-    {
-      col.name[((r-1)*p+1):(r*p)] <- paste("Variable ", r,  " - ", colnames(X), sep="")   
+    ## Extract the samples into separate matrix and list objects
+    samples.beta.list <- lapply(results, function(l) l[["samples.beta"]])
+    samples.beta.matrix <- do.call(what=rbind, args=samples.beta.list)   
+    samples.phi.list <- lapply(results, function(l) l[["samples.phi"]])
+    samples.phi.matrix <- do.call(what=rbind, args=samples.phi.list)
+        if(!fix.rho.S)
+        {
+        samples.rho.list <- lapply(results, function(l) l[["samples.rho"]])
+        samples.rho.matrix <- do.call(what=rbind, args=samples.rho.list)
+        }
+        if(!fix.rho.T)
+        {
+        samples.alpha.list <- lapply(results, function(l) l[["samples.alpha"]])
+        samples.alpha.matrix <- do.call(what=rbind, args=samples.alpha.list)
+        }
+    samples.Sigma.list <- lapply(results, function(l) l[["samples.Sigma"]])
+    samples.loglike.list <- lapply(results, function(l) l[["samples.loglike"]])
+    samples.loglike.matrix <- do.call(what=rbind, args=samples.loglike.list)
+    samples.fitted.list <- lapply(results, function(l) l[["samples.fitted"]])
+    samples.fitted.matrix <- do.call(what=rbind, args=samples.fitted.list)
+        if(n.miss>0) samples.Y.list <- lapply(results, function(l) l[["samples.Y"]])
+
+    ## Compute the fitted deviance
+    mean.beta <- matrix(apply(samples.beta.matrix, 2, mean), nrow=p, ncol=J, byrow=F)
+    mean.phi <- matrix(apply(samples.phi.matrix, 2, mean), nrow=NK, ncol=J, byrow=T)
+    fitted.mean <- exp(X.standardised %*% mean.beta + mean.phi + offset)
+    deviance.fitted <- -2 * sum(dpois(x=as.numeric(t(Y)), lambda=as.numeric(t(fitted.mean)), log=TRUE), na.rm=TRUE)
+    modelfit <- common.modelfit(samples.loglike.matrix, deviance.fitted)
+
+    ## Create the fitted values and residuals
+    fitted.values <- matrix(apply(samples.fitted.matrix, 2, mean), nrow=NK, ncol=J, byrow=T)
+    response.residuals <- Y - fitted.values
+    pearson.residuals <- response.residuals / sqrt(fitted.values)
+    residuals <- list(response=response.residuals, pearson=pearson.residuals)
+
+    ## Transform the parameters back to the original covariate scale.
+    samples.beta.list <- samples.beta.list
+        for(j in 1:n.chains)
+        {
+            for(r in 1:J)
+            {
+            samples.beta.list[[j]][ ,((r-1)*p+1):(r*p)] <- common.betatransform(samples.beta.list[[j]][ ,((r-1)*p+1):(r*p) ], X.indicator, X.mean, X.sd, p, FALSE)
+            }
+        }
+    samples.beta.matrix <- do.call(what=rbind, args=samples.beta.list)
+
+    ## Create MCMC objects
+    beta.mcmc <- mcmc.list(lapply(samples.beta.list, mcmc))
+    phi.mcmc <- mcmc.list(lapply(samples.phi.list, mcmc))
+    fitted.mcmc <- mcmc.list(lapply(samples.fitted.list, mcmc))
+        if(n.miss>0) 
+        {    
+        Y.mcmc <- mcmc.list(lapply(samples.Y.list, mcmc))
+        }else
+        {
+        Y.mcmc <- NA    
+        }
+        if(fix.rho.S & fix.rho.T)
+        {
+        rhoext.mcmc <- NA
+        }else if(fix.rho.S & !fix.rho.T)
+        {
+            for(j in 1:n.chains)
+            {
+            colnames(samples.alpha.list[[j]]) <- c("rho.T")  
+            } 
+        rhoext.mcmc <- mcmc.list(lapply(samples.alpha.list, mcmc))
+        }else if(!fix.rho.S & fix.rho.T)
+        {
+            for(j in 1:n.chains)
+            {
+            colnames(samples.rho.list[[j]]) <- c("rho.S")  
+            } 
+        rhoext.mcmc <- mcmc.list(lapply(samples.rho.list, mcmc))
+        }else
+        {
+        rho.temp <- as.list(rep(NA, n.chains))    
+            for(j in 1:n.chains)
+            {
+            rho.temp[[j]] <- cbind(samples.rho.list[[j]], samples.alpha.list[[j]])
+            colnames(rho.temp[[j]]) <- c("rho.S", "rho.T")
+            }
+        rhoext.mcmc <- mcmc.list(lapply(rho.temp, mcmc))
+        }
+    samples <- list(beta=beta.mcmc, phi=phi.mcmc, rho=rhoext.mcmc, Sigma=samples.Sigma.list, fitted=fitted.mcmc, Y=Y.mcmc)
+
+    ## create a summary object
+    n.keep <- floor((n.sample - burnin)/thin) * n.chains
+    summary.beta <- t(rbind(apply(samples.beta.matrix, 2, mean), apply(samples.beta.matrix, 2, quantile, c(0.025, 0.975)))) 
+    summary.beta <- cbind(summary.beta, rep(n.keep, p), rep(accept.final[names(accept.final)=="beta"],p), effectiveSize(beta.mcmc), gelman.diag(beta.mcmc)$psrf[ ,2])
+    col.name <- rep(NA, p*(J-1))
+        if(is.null(colnames(Y)))
+        {
+            for(r in 1:J)
+            {
+            col.name[((r-1)*p+1):(r*p)] <- paste("Variable ", r,  " - ", colnames(X), sep="")   
+            }
+        }else
+        {
+            for(r in 1:J)
+            {
+            col.name[((r-1)*p+1):(r*p)] <- paste(colnames(Y)[r],  " - ", colnames(X), sep="")   
+            }
+        }
+    rownames(summary.beta) <- col.name
+    colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "PSRF (upper 95% CI)")
+
+    summary.hyper <- array(NA, c((J+2) ,7))
+        for(r in 1:J)
+        {
+        temp <- NA
+        temp2 <- as.list(rep(NA, n.chains))
+            for(v in 1:n.chains)
+            {
+            temp <- c(temp, samples.Sigma.list[[v]][ ,r,r])
+            temp2[[v]] <- mcmc(samples.Sigma.list[[v]][ ,r,r])
+            }
+        temp <- temp[-1]    
+        summary.hyper[r, 1] <- mean(temp)
+        summary.hyper[r, 2:3] <- quantile(temp, c(0.025, 0.975)) 
+        summary.hyper[r, 4] <- n.keep
+        summary.hyper[r, 5] <- 100
+        summary.hyper[r, 6] <- effectiveSize(mcmc.list(temp2))
+        summary.hyper[r, 7] <- gelman.diag(mcmc.list(temp2))$psrf[ ,2]
+        }
+ 
+        if(!fix.rho.S)
+        {
+        temp <- mcmc.list(lapply(samples.rho.list, mcmc))
+        summary.hyper[(J+1), 1:3] <- c(mean(samples.rho.matrix), quantile(samples.rho.matrix, c(0.025, 0.975)))
+        summary.hyper[(J+1), 4:5] <- c(n.keep, accept.final[names(accept.final)=="rho.S"])
+        summary.hyper[(J+1), 6:7] <- c(effectiveSize(temp), gelman.diag(temp)$psrf[ ,2])
+        }else
+        {
+        summary.hyper[(J+1), 1:3] <- c(rho, rho, rho)
+        summary.hyper[(J+1), 4:5] <- rep(NA, 2)
+        summary.hyper[(J+1), 6:7] <- rep(NA, 2)
+        }
+  
+        if(!fix.rho.T)
+        {
+        temp <- mcmc.list(lapply(samples.alpha.list, mcmc))
+        summary.hyper[(J+2), 1:3] <- c(mean(samples.alpha.matrix), quantile(samples.alpha.matrix, c(0.025, 0.975)))
+        summary.hyper[(J+2), 4:5] <- c(n.keep, accept.final[names(accept.final)=="rho.T"])
+        summary.hyper[(J+2), 6:7] <- c(effectiveSize(temp), gelman.diag(temp)$psrf[ ,2])
+        }else
+        {
+        summary.hyper[(J+2), 1:3] <- c(alpha, alpha, alpha)
+        summary.hyper[(J+2), 4:5] <- rep(NA, 2)
+        summary.hyper[(J+2), 6:7] <- rep(NA, 2)
+        }
+  
+    summary.results <- rbind(summary.beta, summary.hyper)
+    rownames(summary.results)[((J*p)+1): nrow(summary.results)] <- c(paste(rep("Sigma",J), 1:J, 1:J, sep=""), "rho.S", "rho.T")
+    summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
+    summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
     }
-  }else
-  {
-    for(r in 1:J)
-    {
-      col.name[((r-1)*p+1):(r*p)] <- paste(colnames(Y)[r],  " - ", colnames(X), sep="")   
-    }
-  }
-  rownames(summary.beta) <- col.name
-  colnames(summary.beta) <- c("Mean", "2.5%", "97.5%", "n.sample", "% accept", "n.effective", "Geweke.diag")
-  
-  summary.hyper <- array(NA, c((J+2) ,7))
-  summary.hyper[1:J, 1] <- diag(apply(samples.Sigma, c(2,3), mean))
-  summary.hyper[1:J, 2] <- diag(apply(samples.Sigma, c(2,3), quantile, c(0.025)))
-  summary.hyper[1:J, 3] <- diag(apply(samples.Sigma, c(2,3), quantile, c(0.975)))
-  summary.hyper[1:J, 4] <- rep(n.keep, J)
-  summary.hyper[1:J, 5] <- rep(100, J)
-  summary.hyper[1:J, 6] <- diag(apply(samples.Sigma, c(2,3), effectiveSize))
-    for(r in 1:J)
-    {
-    summary.hyper[r, 7] <- geweke.diag(samples.Sigma[ ,r,r])$z    
-    }
-  
-    if(!fix.rho.S)
-    {
-    summary.hyper[(J+1), 1:3] <- c(mean(samples.rho), quantile(samples.rho, c(0.025, 0.975)))
-    summary.hyper[(J+1), 4:5] <- c(n.keep, accept.rho)
-    summary.hyper[(J+1), 6:7] <- c(effectiveSize(samples.rho), geweke.diag(samples.rho)$z)
-    }else
-    {
-    summary.hyper[(J+1), 1:3] <- c(rho, rho, rho)
-    summary.hyper[(J+1), 4:5] <- rep(NA, 2)
-    summary.hyper[(J+1), 6:7] <- rep(NA, 2)
-    }
-  
-    if(!fix.rho.T)
-    {
-    summary.hyper[(J+2), 1:3] <- c(mean(samples.alpha), quantile(samples.alpha, c(0.025, 0.975)))
-    summary.hyper[(J+2), 4:5] <- c(n.keep, accept.alpha)
-    summary.hyper[(J+2), 6:7] <- c(effectiveSize(samples.alpha), geweke.diag(samples.alpha)$z)
-    }else
-    {
-    summary.hyper[(J+2), 1:3] <- c(alpha, alpha, alpha)
-    summary.hyper[(J+2), 4:5] <- rep(NA, 2)
-    summary.hyper[(J+2), 6:7] <- rep(NA, 2)
-    }
-  
-  summary.results <- rbind(summary.beta, summary.hyper)
-  rownames(summary.results)[((J*p)+1): nrow(summary.results)] <- c(paste(rep("Sigma",J), 1:J, 1:J, sep=""), "rho.S", "rho.T")
-  summary.results[ , 1:3] <- round(summary.results[ , 1:3], 4)
-  summary.results[ , 4:7] <- round(summary.results[ , 4:7], 1)
-  
-  
-  #### Create the fitted values and residuals
-  fitted.values <- matrix(apply(samples.fitted, 2, mean), nrow=NK, ncol=J, byrow=T)
-  response.residuals <- Y - fitted.values
-  pearson.residuals <- response.residuals / sqrt(fitted.values)
-  residuals <- list(response=response.residuals, pearson=pearson.residuals)
-  
-  
-  
-  #### Compile and return the results
-  model.string <- c("Likelihood model - Poisson (log link function)", "\nRandom effects model - Multivariate Autoregressive order 1 CAR model\n")
-  #### Harmonise samples in case of them not being generated
-    if(fix.rho.S & fix.rho.T)
-    {
-    samples.rhoext <- NA
-    }else if(fix.rho.S & !fix.rho.T)
-    {
-    samples.rhoext <- samples.alpha
-    colnames(samples.rhoext) <- c("rho.T")
-    }else if(!fix.rho.S & fix.rho.T)
-    {
-    samples.rhoext <- samples.rho  
-    names(samples.rhoext) <- "rho.S"
-    }else
-    {
-    samples.rhoext <- cbind(samples.rho, samples.alpha)
-    colnames(samples.rhoext) <- c("rho.S", "rho.T")
-    }
-  
-  if(n.miss==0) samples.Y = NA
-  samples <- list(beta=samples.beta.orig, phi=mcmc(samples.phi), Sigma=samples.Sigma, rho=mcmc(samples.rhoext), fitted=mcmc(samples.fitted), Y=mcmc(samples.Y))
-  results <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=NULL,  formula=formula, model=model.string, X=X)
-  class(results) <- "CARBayesST"
-  
-  
-  #### Finish by stating the time taken    
-  if(verbose)
-  {
-    b<-proc.time()
-    cat("Finished in ", round(b[3]-a[3], 1), "seconds.\n")
-  }else
-  {}
-  return(results)
+    
+
+
+###################################
+#### Compile and return the results
+###################################
+model.string <- c("Likelihood model - Poisson (log link function)", "\nRandom effects model - Multivariate Autoregressive order 1 CAR model\n")
+n.total <- floor((n.sample - burnin) / thin) * n.chains
+mcmc.info <- c(n.total, n.sample, burnin, thin, n.chains)
+names(mcmc.info) <- c("Total samples", "n.sample", "burnin", "thin", "n.chains")
+results.final <- list(summary.results=summary.results, samples=samples, fitted.values=fitted.values, residuals=residuals, modelfit=modelfit, accept=accept.final, localised.structure=NULL, formula=formula, model=model.string,  mcmc.info=mcmc.info, X=X)
+class(results.final) <- "CARBayesST"
+     if(verbose)
+     {
+     b<-proc.time()
+     cat("Finished in ", round(b[3]-a[3], 1), "seconds.\n")
+     }else
+     {}
+ return(results.final)
 }
